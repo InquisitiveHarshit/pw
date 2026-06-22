@@ -1,7 +1,17 @@
-import Image from "next/image";
+import Header from "@/components/Header";
+import Hero from "@/components/Hero";
+import FastSellingProperties from "@/components/FastSellingProperties";
+import Footer from "@/components/Footer";
 
 export default function Home() {
   return (
-    <>HI </>
+    <>
+      <Header />
+      <main className="flex-grow">
+        <Hero />
+        <FastSellingProperties />
+      </main>
+      <Footer />
+    </>
   );
 }
