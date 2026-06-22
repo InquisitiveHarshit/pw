@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useRef, useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { getProperties, type Property } from "@/lib/propertyStore";
 
 interface DisplayProperty extends Property {
@@ -18,6 +19,7 @@ interface DisplayProperty extends Property {
 
 export default function FastSellingProperties() {
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const router = useRouter();
   const [properties, setProperties] = useState<DisplayProperty[]>([]);
   const [liked, setLiked] = useState<Record<string, boolean>>({});
 
@@ -129,7 +131,8 @@ export default function FastSellingProperties() {
           {properties.map((prop) => (
             <div
               key={prop.id}
-              className="w-[360px] sm:w-[380px] shrink-0 bg-[#FAF1E6] text-[#313131] rounded-[28px] border border-[#C7C0AE]/30 shadow-xl overflow-hidden snap-start flex flex-col justify-between transition-transform duration-300 hover:scale-[1.01]"
+              onClick={() => router.push(`/properties/${prop.id}`)}
+              className="cursor-pointer w-[360px] sm:w-[380px] shrink-0 bg-[#FAF1E6] text-[#313131] rounded-[28px] border border-[#C7C0AE]/30 shadow-xl overflow-hidden snap-start flex flex-col justify-between transition-transform duration-300 hover:scale-[1.01]"
             >
               <div className="relative h-[220px] w-full overflow-hidden bg-zinc-800">
                 <img
@@ -152,20 +155,21 @@ export default function FastSellingProperties() {
 
                 <div className="absolute top-4 right-4 flex flex-col gap-2">
                   <button
-                    onClick={() => toggleLike(prop.id)}
+                    onClick={(e) => { e.stopPropagation(); toggleLike(prop.id); }}
                     className="w-8 h-8 rounded-full bg-white shadow-md flex items-center justify-center transition-transform active:scale-90 cursor-pointer"
                   >
                     <span className="text-sm">{liked[prop.id] ? "❤️" : "🤍"}</span>
                   </button>
                   <button
-                    onClick={() => alert("Added to comparison list")}
+                    onClick={(e) => { e.stopPropagation(); alert("Added to comparison list"); }}
                     className="w-8 h-8 rounded-full bg-white shadow-md flex items-center justify-center text-gray-700 text-xs font-bold hover:text-black cursor-pointer"
                   >
                     ⇄
                   </button>
                   <button
-                    onClick={() => {
-                      navigator.clipboard.writeText(window.location.origin + `#property-${prop.id}`);
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      navigator.clipboard.writeText(window.location.origin + `/properties/${prop.id}`);
                       alert("Link copied to clipboard!");
                     }}
                     className="w-8 h-8 rounded-full bg-white shadow-md flex items-center justify-center text-gray-700 text-xs hover:text-black cursor-pointer"
@@ -178,7 +182,7 @@ export default function FastSellingProperties() {
                   {[0, 1, 2].map((dotIndex) => (
                     <button
                       key={dotIndex}
-                      onClick={() => changeActiveDot(prop.id, dotIndex)}
+                      onClick={(e) => { e.stopPropagation(); changeActiveDot(prop.id, dotIndex); }}
                       className={`w-2.5 h-2.5 rounded-full transition-all cursor-pointer ${
                         prop.activeDot === dotIndex ? "bg-white scale-110" : "bg-white/40"
                       }`}
@@ -203,6 +207,7 @@ export default function FastSellingProperties() {
                   
                   <a
                     href="tel:+91999999999"
+                    onClick={(e) => e.stopPropagation()}
                     className="w-10 h-10 rounded-full bg-[#FFA100] hover:bg-[#FFA100]/90 flex items-center justify-center text-[#313131] transition-transform active:scale-95 shadow-md shrink-0 cursor-pointer"
                   >
                     📞
@@ -212,7 +217,7 @@ export default function FastSellingProperties() {
                 <div className="bg-white text-[#313131] rounded-xl p-3.5 border border-[#C7C0AE]/30 space-y-3">
                   <div className="flex justify-between items-center text-[10px] font-bold text-[#313131]/60 uppercase tracking-wider">
                     <span>👥 Group Buying in Progress</span>
-                    <a href="#how" className="text-[#FFA100] lowercase font-semibold underline hover:text-[#313131]">
+                    <a href="#how" onClick={(e) => e.stopPropagation()} className="text-[#FFA100] lowercase font-semibold underline hover:text-[#313131]">
                       Why group buying? 🛈
                     </a>
                   </div>
@@ -250,7 +255,7 @@ export default function FastSellingProperties() {
                     <div className="flex-grow border-t-2 border-dashed border-[#C7C0AE] h-0.5 mx-1" />
 
                     <button 
-                      onClick={() => alert(`Starting Group Buy flow for ${prop.projectName}`)}
+                      onClick={(e) => { e.stopPropagation(); alert(`Starting Group Buy flow for ${prop.projectName}`); }}
                       className="flex items-center gap-1 bg-white hover:bg-[#FFA100]/10 border border-dashed border-[#FFA100] rounded-full px-2.5 py-1 transition-all active:scale-95 cursor-pointer"
                     >
                       <span className="w-1.5 h-1.5 bg-[#FFA100] rounded-full animate-ping" />
@@ -284,13 +289,13 @@ export default function FastSellingProperties() {
 
                 <div className="grid grid-cols-2 gap-3 pt-2">
                   <button
-                    onClick={() => alert(`Direct Booking Solo at ${prop.developerPrice} unlocked!`)}
+                    onClick={(e) => { e.stopPropagation(); alert(`Direct Booking Solo at ${prop.developerPrice} unlocked!`); }}
                     className="py-3 px-2 border-2 border-[#FFA100] bg-transparent text-[#FFA100] hover:bg-[#FFA100] hover:text-[#313131] font-bold text-xs rounded-xl transition-all duration-300 cursor-pointer text-center font-vietnam shadow-sm active:scale-98"
                   >
                     Book Solo
                   </button>
                   <button
-                    onClick={() => alert(`Joining the active group buy for ${prop.projectName}! Discount will be locked.`)}
+                    onClick={(e) => { e.stopPropagation(); alert(`Joining the active group buy for ${prop.projectName}! Discount will be locked.`); }}
                     className="py-3 px-2 bg-[#FFA100] hover:bg-[#FFA100]/90 text-[#313131] font-bold text-xs rounded-xl transition-all duration-300 cursor-pointer text-center font-vietnam shadow-md active:scale-98"
                   >
                     Group Purchase

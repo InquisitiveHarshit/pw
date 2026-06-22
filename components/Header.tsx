@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
+import Link from "next/link";
 
 export default function Header() {
   const [isOpen, setIsOpen] = useState(false);
@@ -11,7 +12,7 @@ export default function Header() {
         <div className="flex items-center justify-between h-20">
           {/* Logo Section */}
           <div className="flex-shrink-0 flex items-center">
-            <a href="#" className="flex items-center gap-3 group">
+            <Link href="/" className="flex items-center gap-3 group">
               <div className="flex items-center bg-[#313131] px-3.5 py-2 rounded-lg transition-transform duration-300 group-hover:scale-[1.02] shadow-sm">
                 <span className="font-extrabold text-2xl tracking-tighter text-white font-vietnam">P</span>
                 <span className="font-extrabold text-2xl tracking-tighter text-[#FFA100] font-vietnam">W</span>
@@ -24,7 +25,7 @@ export default function Header() {
                   No Hype, Just Realty
                 </span>
               </div>
-            </a>
+            </Link>
           </div>
 
           {/* Desktop Nav Links */}
