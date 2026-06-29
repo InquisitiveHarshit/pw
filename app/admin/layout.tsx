@@ -1,20 +1,28 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 
 const navItems = [
-  { label: "Dashboard", href: "/admin", icon: "⊞" },
-  { label: "Properties", href: "/admin/properties", icon: "🏠" },
-  { label: "Add Property", href: "/admin/properties/new", icon: "+" },
+  { label: "Dashboard",   href: "/admin",          icon: "⊞" },
+  { label: "Properties",  href: "/admin/properties", icon: "🏠" },
+  { label: "Add Property",href: "/admin/properties/new", icon: "+" },
+  { label: "Groups",      href: "/admin/groups",    icon: "👥" },
+  { label: "Blogs",       href: "/admin/blogs",     icon: "📝" },
+  { label: "Users",       href: "/admin/users",     icon: "👤" },
 ];
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const router = useRouter();
+
+  // Skip sidebar on the login page
+  const isLoginPage = pathname === "/admin/login";
+  if (isLoginPage) return <>{children}</>;
 
   return (
     <div className="min-h-screen flex bg-[#F5F4F0] font-vietnam">
-      {/* Sidebar */}
+      {/* ── Sidebar ─────────────────────────────── */}
       <aside className="w-64 shrink-0 bg-[#313131] flex flex-col shadow-xl">
         {/* Logo */}
         <div className="px-6 py-6 border-b border-white/10">
@@ -58,25 +66,24 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           })}
         </nav>
 
-        {/* Back to site */}
-        <div className="px-3 py-5 border-t border-white/10">
+        {/* Footer links */}
+        <div className="px-3 py-5 border-t border-white/10 space-y-1">
           <Link
             href="/"
             className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold text-white/50 hover:text-white hover:bg-white/10 transition-all"
           >
-            <span>←</span>
-            Back to Website
+            <span>←</span> Back to Website
           </Link>
         </div>
       </aside>
 
-      {/* Main Content */}
+      {/* ── Main Content ────────────────────────── */}
       <div className="flex-1 flex flex-col overflow-hidden">
         {/* Top bar */}
         <header className="bg-white border-b border-[#C7C0AE]/30 px-8 py-4 flex items-center justify-between shadow-sm">
           <div>
             <h1 className="text-lg font-extrabold text-[#313131] font-vietnam">Admin Panel</h1>
-            <p className="text-xs text-[#313131]/50 mt-0.5">Phase 1 — No Auth Required</p>
+            <p className="text-xs text-[#313131]/50 mt-0.5">Properties Wallah — Control Centre</p>
           </div>
           <div className="flex items-center gap-3">
             <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 border border-emerald-200 rounded-full text-xs font-bold text-emerald-700">
@@ -93,9 +100,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         </header>
 
         {/* Page Content */}
-        <main className="flex-1 overflow-y-auto p-8">
-          {children}
-        </main>
+        <main className="flex-1 overflow-y-auto p-8">{children}</main>
       </div>
     </div>
   );

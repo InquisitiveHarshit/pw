@@ -2,9 +2,13 @@
 
 import React, { useRef, useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { getProperties, type Property } from "@/lib/propertyStore";
+import { getProperties, type Property } from "@/lib/api/properties";
 
 interface DisplayProperty extends Property {
+  id: string; // Add id mapping for backward compatibility in the component
+  projectName: string;
+  city: string;
+  sector: string;
   bhkDetails: string;
   developerPrice: string;
   groupPrice: string;
@@ -15,6 +19,9 @@ interface DisplayProperty extends Property {
   recentViews: number;
   avatars: string[];
   activeDot: number;
+  promotionalTag?: string;
+  heroImage: string;
+  slotsFilled: number;
 }
 
 export default function FastSellingProperties() {
@@ -22,43 +29,59 @@ export default function FastSellingProperties() {
   const router = useRouter();
   const [properties, setProperties] = useState<DisplayProperty[]>([]);
   const [liked, setLiked] = useState<Record<string, boolean>>({});
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const storeProps = getProperties().filter(p => p.isFeatured && p.status === "active");
-    
-    // Map to display properties
-    const displayProps = storeProps.map(p => {
-      const types = p.configurations.map(c => c.type).join(", ");
-      const areas = p.configurations.map(c => parseInt(c.carpetArea.replace(/\D/g, '')) || 0).filter(a => a > 0);
-      const minArea = Math.min(...areas);
-      const maxArea = Math.max(...areas);
-      const areaStr = areas.length > 0 ? (minArea === maxArea ? `${minArea} Sqft` : `${minArea} - ${maxArea} Sqft`) : "";
-      const bhkDetails = `${types} | ${areaStr}`;
+    const fetchProperties = async () => {
+      try {
+        const res = await getProperties({ limit: 10 });
+        const storeProps = res.data.filter(p => p.isFeatured && p.status === "open");
+        
+        // Map to display properties
+        const displayProps = storeProps.map(p => {
+          const type = p.type || "Apartment";
+          const area = p.area || 0;
+          const bhkDetails = p.bhk ? `${p.bhk} BHK | ${area > 0 ? area + ' Sqft' : ''}` : type;
 
-      const basePriceStr = p.configurations[0]?.startingPrice || "₹0";
-      
-      // Fake discount calculation for demo based on string length or arbitrary
-      const developerPrice = basePriceStr;
-      const groupPrice = basePriceStr.replace("Cr", "Cr").replace("L", "L"); // We would ideally calculate a real discount if prices were numbers.
-      
-      const avatars = ["Santosh", "Tushar", "Nikhlesh", "Vivek", "Arpit", "Bharat"].slice(0, p.slotsFilled);
+          const basePriceStr = p.price ? `₹${(p.price / 10000000).toFixed(2)} Cr` : "₹0";
+          
+          const developerPrice = basePriceStr;
+          const groupPrice = basePriceStr;
+          
+          const filled = p.filledSlots || 0;
+          const avatars = ["Santosh", "Tushar", "Nikhlesh", "Vivek", "Arpit", "Bharat"].slice(0, filled);
 
-      return {
-        ...p,
-        bhkDetails,
-        developerPrice,
-        groupPrice: developerPrice, // In phase 1 just use the starting price
-        discountPct: "Group Buy Deal",
-        buyersJoinedText: p.slotsFilled > 0 ? `▲ ${p.slotsFilled} joined recently` : "Be the first to join!",
-        subAlertText: p.slotsFilled > 0 ? `${p.slotsFilled} families are purchasing!` : "Start group buying in this project.",
-        ctaMemberText: `You? Become ${p.slotsFilled + 1}th member`,
-        recentViews: Math.floor(Math.random() * 1000) + 500,
-        avatars,
-        activeDot: 0,
-      };
-    });
+          return {
+            ...p,
+            id: p._id,
+            projectName: p.title,
+            city: p.location,
+            sector: p.sector || "",
+            bhkDetails,
+            developerPrice,
+            groupPrice: developerPrice, 
+            discountPct: "Group Buy Deal",
+            buyersJoinedText: filled > 0 ? `▲ ${filled} joined recently` : "Be the first to join!",
+            subAlertText: filled > 0 ? `${filled} families are purchasing!` : "Start group buying in this project.",
+            ctaMemberText: `You? Become ${filled + 1}th member`,
+            recentViews: Math.floor(Math.random() * 1000) + 500,
+            avatars,
+            activeDot: 0,
+            heroImage: p.images?.[0] || "/property_villa.png",
+            promotionalTag: p.promotionalTag || (p.isFeatured ? "Selling Fast" : undefined),
+            slotsFilled: filled,
+          };
+        });
 
-    setProperties(displayProps);
+        setProperties(displayProps);
+      } catch (error) {
+        console.error("Failed to load properties:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchProperties();
   }, []);
 
   const toggleLike = (id: string) => {
@@ -82,6 +105,7 @@ export default function FastSellingProperties() {
     );
   };
 
+  if (loading) return <div className="py-16 text-center">Loading properties...</div>;
   if (properties.length === 0) return null;
 
   return (

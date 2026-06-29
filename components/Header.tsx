@@ -1,17 +1,42 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
+
+const NAV_LINKS = [
+  { label: "Home", href: "/" },
+  { label: "Properties", href: "/properties" },
+  { label: "Subscription", href: "/subscription" },
+  { label: "Blogs", href: "/blogs" },
+  { label: "Contact Us", href: "/contact" },
+  { label: "About Us", href: "/about" },
+];
 
 export default function Header() {
   const [isOpen, setIsOpen] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
+  const pathname = usePathname();
+
+  useEffect(() => {
+    const handleScroll = () => setScrolled(window.scrollY > 10);
+    window.addEventListener("scroll", handleScroll);
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
 
   return (
-    <header className="sticky top-0 z-50 w-full bg-[#FAF1E6]/80 backdrop-blur-md border-b border-[#C7C0AE]/30 transition-all duration-300">
+    <header
+      className={`sticky top-0 z-50 w-full transition-all duration-300 ${
+        scrolled
+          ? "bg-[#FAF1E6]/95 backdrop-blur-md shadow-sm border-b border-[#C7C0AE]/30"
+          : "bg-[#FAF1E6]/80 backdrop-blur-sm border-b border-[#C7C0AE]/20"
+      }`}
+    >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-20">
-          {/* Logo Section */}
-          <div className="flex-shrink-0 flex items-center">
+
+          {/* Logo */}
+          <div className="flex-shrink-0">
             <Link href="/" className="flex items-center gap-3 group">
               <div className="flex items-center bg-[#313131] px-3.5 py-2 rounded-lg transition-transform duration-300 group-hover:scale-[1.02] shadow-sm">
                 <span className="font-extrabold text-2xl tracking-tighter text-white font-vietnam">P</span>
@@ -28,48 +53,64 @@ export default function Header() {
             </Link>
           </div>
 
-          {/* Desktop Nav Links */}
-          <nav className="hidden md:flex items-center gap-8">
-            <a href="#how-it-works" className="text-sm font-medium text-[#313131]/80 hover:text-[#FFA100] transition-colors duration-200">
-              How it Works
-            </a>
-            <a href="#active-groups" className="text-sm font-medium text-[#313131]/80 hover:text-[#FFA100] transition-colors duration-200">
-              Active Groups
-            </a>
-            <a href="#projects" className="text-sm font-medium text-[#313131]/80 hover:text-[#FFA100] transition-colors duration-200">
-              Featured Projects
-            </a>
-            <a href="#faq" className="text-sm font-medium text-[#313131]/80 hover:text-[#FFA100] transition-colors duration-200">
-              FAQ
-            </a>
+          {/* Desktop Nav */}
+          <nav className="hidden lg:flex items-center gap-1">
+            {NAV_LINKS.map((link) => {
+              const isActive = pathname === link.href;
+              return (
+                <Link
+                  key={link.href}
+                  href={link.href}
+                  className={`relative px-4 py-2 text-sm font-medium rounded-md transition-all duration-200 group ${
+                    isActive
+                      ? "text-[#FFA100]"
+                      : "text-[#313131]/75 hover:text-[#313131]"
+                  }`}
+                >
+                  {link.label}
+                  {/* Active / hover underline */}
+                  <span
+                    className={`absolute bottom-0 left-1/2 -translate-x-1/2 h-0.5 bg-[#FFA100] rounded-full transition-all duration-300 ${
+                      isActive ? "w-4/5" : "w-0 group-hover:w-4/5"
+                    }`}
+                  />
+                </Link>
+              );
+            })}
           </nav>
 
-          {/* Desktop CTA Button */}
-          <div className="hidden md:block">
-            <a
-              href="#join"
-              className="inline-flex items-center justify-center px-5 py-2.5 rounded-lg text-sm font-semibold bg-[#313131] text-white hover:bg-[#FFA100] hover:text-[#313131] transition-all duration-300 shadow-sm cursor-pointer"
+          {/* Desktop CTA */}
+          <div className="hidden lg:flex items-center gap-3">
+            <Link
+              href="/login"
+              className="px-4 py-2 text-sm font-semibold text-[#313131] border border-[#313131]/20 rounded-lg hover:border-[#FFA100] hover:text-[#FFA100] transition-all duration-200"
             >
-              Start a Group
-            </a>
+              Login
+            </Link>
+            <Link
+              href="/properties"
+              className="px-5 py-2.5 text-sm font-semibold bg-[#313131] text-white rounded-lg hover:bg-[#FFA100] hover:text-[#313131] transition-all duration-300 shadow-sm"
+            >
+              Join a Group →
+            </Link>
           </div>
 
-          {/* Mobile Menu Button */}
-          <div className="flex md:hidden">
+          {/* Mobile hamburger */}
+          <div className="flex lg:hidden">
             <button
               onClick={() => setIsOpen(!isOpen)}
               type="button"
-              className="inline-flex items-center justify-center p-2 rounded-md text-[#313131] hover:text-[#FFA100] focus:outline-none"
+              className="p-2 rounded-md text-[#313131] hover:text-[#FFA100] focus:outline-none transition-colors"
               aria-controls="mobile-menu"
               aria-expanded={isOpen}
+              aria-label="Toggle navigation menu"
             >
-              <span className="sr-only">Open main menu</span>
               {isOpen ? (
-                <svg className="block h-6 width-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                 </svg>
               ) : (
-                <svg className="block h-6 width-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
                 </svg>
               )}
@@ -79,49 +120,52 @@ export default function Header() {
       </div>
 
       {/* Mobile Menu */}
-      {isOpen && (
-        <div className="md:hidden bg-[#FAF1E6] border-b border-[#C7C0AE]/20" id="mobile-menu">
-          <div className="px-2 pt-2 pb-4 space-y-1 sm:px-3">
-            <a
-              href="#how-it-works"
-              onClick={() => setIsOpen(false)}
-              className="block px-3 py-2.5 rounded-md text-base font-medium text-[#313131]/80 hover:text-[#FFA100] hover:bg-[#C7C0AE]/10 transition-colors"
-            >
-              How it Works
-            </a>
-            <a
-              href="#active-groups"
-              onClick={() => setIsOpen(false)}
-              className="block px-3 py-2.5 rounded-md text-base font-medium text-[#313131]/80 hover:text-[#FFA100] hover:bg-[#C7C0AE]/10 transition-colors"
-            >
-              Active Groups
-            </a>
-            <a
-              href="#projects"
-              onClick={() => setIsOpen(false)}
-              className="block px-3 py-2.5 rounded-md text-base font-medium text-[#313131]/80 hover:text-[#FFA100] hover:bg-[#C7C0AE]/10 transition-colors"
-            >
-              Featured Projects
-            </a>
-            <a
-              href="#faq"
-              onClick={() => setIsOpen(false)}
-              className="block px-3 py-2.5 rounded-md text-base font-medium text-[#313131]/80 hover:text-[#FFA100] hover:bg-[#C7C0AE]/10 transition-colors"
-            >
-              FAQ
-            </a>
-            <div className="pt-4 pb-2 border-t border-[#C7C0AE]/20">
-              <a
-                href="#join"
+      <div
+        id="mobile-menu"
+        className={`lg:hidden overflow-hidden transition-all duration-300 ease-in-out ${
+          isOpen ? "max-h-[500px] opacity-100" : "max-h-0 opacity-0"
+        } bg-[#FAF1E6] border-t border-[#C7C0AE]/20`}
+      >
+        <div className="px-4 pt-3 pb-5 space-y-1">
+          {NAV_LINKS.map((link) => {
+            const isActive = pathname === link.href;
+            return (
+              <Link
+                key={link.href}
+                href={link.href}
                 onClick={() => setIsOpen(false)}
-                className="block text-center w-full px-5 py-3 rounded-lg text-base font-semibold bg-[#313131] text-white hover:bg-[#FFA100] hover:text-[#313131] transition-all"
+                className={`flex items-center px-3 py-2.5 rounded-md text-base font-medium transition-colors ${
+                  isActive
+                    ? "text-[#FFA100] bg-[#FFA100]/10"
+                    : "text-[#313131]/80 hover:text-[#FFA100] hover:bg-[#C7C0AE]/10"
+                }`}
               >
-                Start a Group
-              </a>
-            </div>
+                {link.label}
+                {isActive && (
+                  <span className="ml-auto w-1.5 h-1.5 bg-[#FFA100] rounded-full" />
+                )}
+              </Link>
+            );
+          })}
+
+          <div className="pt-4 pb-1 border-t border-[#C7C0AE]/20 flex flex-col gap-2">
+            <Link
+              href="/login"
+              onClick={() => setIsOpen(false)}
+              className="block text-center px-5 py-3 rounded-lg text-base font-semibold border border-[#313131]/20 text-[#313131] hover:border-[#FFA100] hover:text-[#FFA100] transition-all"
+            >
+              Login
+            </Link>
+            <Link
+              href="/properties"
+              onClick={() => setIsOpen(false)}
+              className="block text-center px-5 py-3 rounded-lg text-base font-semibold bg-[#313131] text-white hover:bg-[#FFA100] hover:text-[#313131] transition-all"
+            >
+              Join a Group →
+            </Link>
           </div>
         </div>
-      )}
+      </div>
     </header>
   );
 }

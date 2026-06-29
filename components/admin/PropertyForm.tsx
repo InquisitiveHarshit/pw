@@ -3,26 +3,40 @@
 import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import {
-  saveProperty,
+  createProperty,
   updateProperty,
-  AMENITIES_OPTIONS,
   type Property,
-  type Configuration,
-} from "@/lib/propertyStore";
+} from "@/lib/api/properties";
 
 type FormProps = {
   initial?: Property;
   mode: "create" | "edit";
 };
 
-const EMPTY_CONFIG: Configuration = { type: "", carpetArea: "", startingPrice: "" };
-
-const PROPERTY_TYPES = ["Apartment", "Villa", "Plot"] as const;
+const PROPERTY_TYPES = ["apartment", "villa", "plot", "commercial", "other"] as const;
 const STATUSES = [
-  { value: "active", label: "Active" },
-  { value: "inactive", label: "Inactive" },
-  { value: "soldOut", label: "Sold Out" },
+  { value: "open", label: "Open" },
+  { value: "full", label: "Full" },
+  { value: "closed", label: "Closed" },
 ] as const;
+
+export const AMENITIES_OPTIONS = [
+  "Swimming Pool",
+  "Gymnasium",
+  "Clubhouse",
+  "24/7 Security",
+  "Power Backup",
+  "EV Charging",
+  "Landscaped Gardens",
+  "Jogging Track",
+  "Parking",
+  "Kids Play Area",
+  "Lift / Elevator",
+  "CCTV Surveillance",
+  "Intercom",
+  "Indoor Games Room",
+  "Yoga / Meditation Area",
+];
 
 // Section wrapper
 function Section({ title, icon, children }: { title: string; icon: string; children: React.ReactNode }) {
@@ -50,85 +64,122 @@ function Field({ label, required, children, hint }: { label: string; required?: 
   );
 }
 
-// Input styles
 const inputCls = "w-full px-4 py-2.5 bg-[#FAF1E6]/40 border border-[#C7C0AE]/40 rounded-xl text-sm text-[#313131] placeholder-[#313131]/30 focus:outline-none focus:border-[#FFA100] transition-colors";
 const selectCls = `${inputCls} cursor-pointer`;
 const textareaCls = `${inputCls} resize-none`;
+
+// Reusable image upload slot component (safe to use hooks inside since it's a real component)
+function ImageSlot({ label, hint, value, onChange }: { label: string; hint: string; value: string; onChange: (val: string) => void }) {
+  const inputRef = useRef<HTMLInputElement>(null);
+  const readFile = (file: File): Promise<string> =>
+    new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result as string);
+      reader.readAsDataURL(file);
+    });
+  return (
+    <div className="space-y-2">
+      <p className="text-xs font-black text-[#313131]/70 uppercase tracking-wider">{label}</p>
+      <p className="text-[11px] text-[#313131]/40">{hint}</p>
+      <div
+        onClick={() => inputRef.current?.click()}
+        className="w-full h-36 rounded-xl border-2 border-dashed border-[#C7C0AE]/50 overflow-hidden bg-[#FAF1E6]/50 cursor-pointer hover:border-[#FFA100] hover:bg-[#FAF1E6] transition-all flex items-center justify-center relative group"
+      >
+        {value ? (
+          <>
+            <img src={value} alt="Preview" className="w-full h-full object-cover" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+            <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center gap-1">
+              <span className="text-white text-2xl">🔄</span>
+              <span className="text-white text-[10px] font-bold">Click to change</span>
+            </div>
+          </>
+        ) : (
+          <div className="text-center text-[#313131]/40 p-4">
+            <div className="text-3xl mb-1">🖼️</div>
+            <p className="text-[10px] font-bold">Click to upload</p>
+            <p className="text-[9px] mt-0.5">JPG, PNG, WEBP</p>
+          </div>
+        )}
+      </div>
+      <input
+        ref={inputRef}
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={async (e) => {
+          const file = e.target.files?.[0];
+          if (file) onChange(await readFile(file));
+        }}
+      />
+      <input
+        className={inputCls + " text-[11px]"}
+        value={value.startsWith("data:") ? "" : value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder="Or paste image URL"
+      />
+      {value && (
+        <button type="button" onClick={() => onChange("")} className="text-[10px] text-red-400 hover:text-red-600 font-semibold">
+          ✕ Remove image
+        </button>
+      )}
+    </div>
+  );
+}
 
 export default function PropertyForm({ initial, mode }: FormProps) {
   const router = useRouter();
   const [saving, setSaving] = useState(false);
   const [toast, setToast] = useState<{ msg: string; type: "success" | "error" } | null>(null);
-  const heroInputRef = useRef<HTMLInputElement>(null);
 
-  // ── Form State ──────────────────────────────────────────
-  const [projectName, setProjectName] = useState(initial?.projectName ?? "");
-  const [developerName, setDeveloperName] = useState(initial?.developerName ?? "");
-  const [city, setCity] = useState(initial?.city ?? "");
-  const [sector, setSector] = useState(initial?.sector ?? "");
-  const [area, setArea] = useState(initial?.area ?? "");
-  const [mapsLink, setMapsLink] = useState(initial?.mapsLink ?? "");
-  const [reraNumber, setReraNumber] = useState(initial?.reraNumber ?? "");
-  const [propertyType, setPropertyType] = useState<Property["propertyType"]>(initial?.propertyType ?? "Apartment");
-  const [configs, setConfigs] = useState<Configuration[]>(
-    initial?.configurations?.length ? initial.configurations : [{ ...EMPTY_CONFIG }]
-  );
-  const [possessionDate, setPossessionDate] = useState(initial?.possessionDate ?? "");
-  const [totalUnits, setTotalUnits] = useState(initial?.totalUnits?.toString() ?? "");
-  const [floors, setFloors] = useState(initial?.floors?.toString() ?? "");
-  const [groupSlots, setGroupSlots] = useState(initial?.groupSlots?.toString() ?? "");
-  const [slotsFilled, setSlotsFilled] = useState(initial?.slotsFilled?.toString() ?? "0");
-  const [membershipFee, setMembershipFee] = useState(initial?.membershipFee?.toString() ?? "");
-  const [heroImage, setHeroImage] = useState(initial?.heroImage ?? "");
-  const [heroPreview, setHeroPreview] = useState(initial?.heroImage ?? "");
-  const [amenities, setAmenities] = useState<string[]>(initial?.amenities ?? []);
-  const [tagline, setTagline] = useState(initial?.tagline ?? "");
+  // Form State
+  const [title, setTitle] = useState(initial?.title ?? "");
   const [description, setDescription] = useState(initial?.description ?? "");
-  const [aboutDeveloper, setAboutDeveloper] = useState(initial?.aboutDeveloper ?? "");
-  const [locationHighlights, setLocationHighlights] = useState(initial?.locationHighlights ?? "");
-  const [status, setStatus] = useState<Property["status"]>(initial?.status ?? "active");
-  const [isBestPrice, setIsBestPrice] = useState(initial?.isBestPrice ?? false);
+  const [location, setLocation] = useState(initial?.location ?? "");
+  const [price, setPrice] = useState(initial?.price?.toString() ?? "");
+  const [propertyType, setPropertyType] = useState(initial?.type ?? "apartment");
+  const [bhk, setBhk] = useState(initial?.bhk?.toString() ?? "");
+  const [area, setArea] = useState(initial?.area?.toString() ?? "");
+  const [amenities, setAmenities] = useState<string[]>(initial?.amenities ?? []);
+  const [totalSlots, setTotalSlots] = useState(initial?.totalSlots?.toString() ?? "10");
+  const [filledSlots, setFilledSlots] = useState(initial?.filledSlots?.toString() ?? "0");
+  const [status, setStatus] = useState(initial?.status ?? "open");
   const [isFeatured, setIsFeatured] = useState(initial?.isFeatured ?? false);
+  const [heroImage, setHeroImage] = useState(initial?.images?.[0] ?? "");
+  const [image2, setImage2] = useState(initial?.images?.[1] ?? "");
+  const [image3, setImage3] = useState(initial?.images?.[2] ?? "");
+  const [brochureUrl, setBrochureUrl] = useState(initial?.brochureUrl ?? "");
+  
+  // New Configurable Fields
+  const [developerName, setDeveloperName] = useState(initial?.developerName ?? "");
+  const [aboutDeveloper, setAboutDeveloper] = useState(initial?.aboutDeveloper ?? "");
+  const [sector, setSector] = useState(initial?.sector ?? "");
+  const [possessionDate, setPossessionDate] = useState(
+    initial?.possessionDate ? new Date(initial.possessionDate).toISOString().split('T')[0] : ""
+  );
+  const [locationHighlights, setLocationHighlights] = useState(initial?.locationHighlights ?? "");
   const [promotionalTag, setPromotionalTag] = useState(initial?.promotionalTag ?? "");
 
-  // ── Configuration Helpers ────────────────────────────────
-  const updateConfig = (index: number, field: keyof Configuration, value: string) => {
-    setConfigs((prev) => prev.map((c, i) => (i === index ? { ...c, [field]: value } : c)));
-  };
-  const addConfig = () => setConfigs((prev) => [...prev, { ...EMPTY_CONFIG }]);
-  const removeConfig = (index: number) => setConfigs((prev) => prev.filter((_, i) => i !== index));
-
-  // ── Image Upload ─────────────────────────────────────────
-  const handleHeroImage = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = () => {
-      const result = reader.result as string;
-      setHeroImage(result);
-      setHeroPreview(result);
-    };
-    reader.readAsDataURL(file);
-  };
-
-  // ── Amenities Toggle ─────────────────────────────────────
   const toggleAmenity = (a: string) => {
     setAmenities((prev) => prev.includes(a) ? prev.filter((x) => x !== a) : [...prev, a]);
   };
 
-  // ── Validation ───────────────────────────────────────────
+  const brochureInputRef = useRef<HTMLInputElement>(null);
+  const readFileAsDataUrl = (file: File): Promise<string> =>
+    new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result as string);
+      reader.readAsDataURL(file);
+    });
+
   const validate = () => {
-    if (!projectName.trim()) return "Project name is required.";
-    if (!developerName.trim()) return "Developer name is required.";
-    if (!city.trim()) return "City is required.";
-    if (!reraNumber.trim()) return "RERA number is required.";
-    if (configs.some((c) => !c.type.trim() || !c.startingPrice.trim())) return "All configurations need a type and starting price.";
-    if (!groupSlots || Number(groupSlots) < 1) return "Group slots must be at least 1.";
-    if (!membershipFee || Number(membershipFee) < 0) return "Membership fee is required.";
+    if (!title.trim()) return "Title is required.";
+    if (!description.trim()) return "Description is required.";
+    if (!location.trim()) return "Location is required.";
+    if (!price || Number(price) <= 0) return "Valid price is required.";
+    if (!totalSlots || Number(totalSlots) < 1) return "Total slots must be at least 1.";
     return null;
   };
 
-  // ── Submit ───────────────────────────────────────────────
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const error = validate();
@@ -139,45 +190,39 @@ export default function PropertyForm({ initial, mode }: FormProps) {
     }
 
     setSaving(true);
-    const data = {
-      projectName: projectName.trim(),
-      developerName: developerName.trim(),
-      city: city.trim(),
-      sector: sector.trim(),
-      area: area.trim(),
-      mapsLink: mapsLink.trim(),
-      reraNumber: reraNumber.trim(),
-      propertyType,
-      configurations: configs.filter((c) => c.type.trim()),
-      possessionDate,
-      totalUnits: Number(totalUnits) || 0,
-      floors: Number(floors) || 0,
-      groupSlots: Number(groupSlots),
-      slotsFilled: Number(slotsFilled) || 0,
-      membershipFee: Number(membershipFee),
-      heroImage: heroImage || "/property_villa.png",
-      gallery: heroImage ? [heroImage] : ["/property_villa.png"],
-      amenities,
-      tagline: tagline.trim(),
+    const data: Partial<Property> = {
+      title: title.trim(),
       description: description.trim(),
-      aboutDeveloper: aboutDeveloper.trim(),
-      locationHighlights: locationHighlights.trim(),
-      status,
-      isBestPrice,
+      location: location.trim(),
+      price: Number(price),
+      type: propertyType,
+      bhk: bhk ? Number(bhk) : undefined,
+      area: area ? Number(area) : undefined,
+      amenities,
+      totalSlots: Number(totalSlots),
+      filledSlots: Number(filledSlots),
+      status: status as Property["status"],
       isFeatured,
+      images: [heroImage, image2, image3].filter((img) => img.trim() !== ""),
+      developerName: developerName.trim(),
+      aboutDeveloper: aboutDeveloper.trim(),
+      sector: sector.trim(),
+      possessionDate: possessionDate,
+      locationHighlights: locationHighlights.trim(),
       promotionalTag: promotionalTag.trim(),
+      brochureUrl: brochureUrl.trim(),
     };
 
     try {
       if (mode === "create") {
-        saveProperty(data);
+        await createProperty(data);
       } else if (initial) {
-        updateProperty(initial.id, data);
+        await updateProperty(initial._id, data);
       }
       setToast({ msg: mode === "create" ? "Property created!" : "Property updated!", type: "success" });
       setTimeout(() => router.push("/admin/properties"), 1200);
-    } catch {
-      setToast({ msg: "Something went wrong. Please try again.", type: "error" });
+    } catch (err: any) {
+      setToast({ msg: err.message || "Something went wrong.", type: "error" });
     } finally {
       setSaving(false);
     }
@@ -194,183 +239,152 @@ export default function PropertyForm({ initial, mode }: FormProps) {
         </div>
       )}
 
-      {/* ── 1. Basic Info ── */}
+      {/* Basic Info */}
       <Section title="Basic Information" icon="📋">
+        <Field label="Property Title" required>
+          <input className={inputCls} value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g. Sunrise Heights — 3 BHK Apartments" />
+        </Field>
+        
         <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-          <Field label="Project Name" required>
-            <input className={inputCls} value={projectName} onChange={(e) => setProjectName(e.target.value)} placeholder="e.g. County Presidentia" />
+          <Field label="Location" required>
+            <input className={inputCls} value={location} onChange={(e) => setLocation(e.target.value)} placeholder="e.g. Sector 56, Gurugram" />
           </Field>
-          <Field label="Developer / Builder Name" required>
-            <input className={inputCls} value={developerName} onChange={(e) => setDeveloperName(e.target.value)} placeholder="e.g. County Group" />
+          <Field label="Price (₹)" required>
+            <input className={inputCls} type="number" min="0" value={price} onChange={(e) => setPrice(e.target.value)} placeholder="e.g. 8500000" />
           </Field>
         </div>
+        
         <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-          <Field label="City" required>
-            <input className={inputCls} value={city} onChange={(e) => setCity(e.target.value)} placeholder="e.g. Noida" />
-          </Field>
-          <Field label="Sector / Sub-Area">
-            <input className={inputCls} value={sector} onChange={(e) => setSector(e.target.value)} placeholder="e.g. Sector 102" />
-          </Field>
-          <Field label="Area / State">
-            <input className={inputCls} value={area} onChange={(e) => setArea(e.target.value)} placeholder="e.g. Uttar Pradesh" />
-          </Field>
-        </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-          <Field label="Google Maps Link">
-            <input className={inputCls} type="url" value={mapsLink} onChange={(e) => setMapsLink(e.target.value)} placeholder="https://maps.google.com/..." />
-          </Field>
-          <Field label="RERA Number" required>
-            <input className={inputCls} value={reraNumber} onChange={(e) => setReraNumber(e.target.value)} placeholder="e.g. UPRERAPRJ12345" />
-          </Field>
-        </div>
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-5">
           <Field label="Property Type" required>
-            <select className={selectCls} value={propertyType} onChange={(e) => setPropertyType(e.target.value as Property["propertyType"])}>
-              {PROPERTY_TYPES.map((t) => <option key={t}>{t}</option>)}
+            <select className={selectCls} value={propertyType} onChange={(e) => setPropertyType(e.target.value as "apartment" | "villa" | "plot" | "commercial" | "other")}>
+              {PROPERTY_TYPES.map((t) => <option key={t} value={t}>{t.charAt(0).toUpperCase() + t.slice(1)}</option>)}
             </select>
           </Field>
+          <Field label="BHK">
+            <input className={inputCls} type="number" min="1" value={bhk} onChange={(e) => setBhk(e.target.value)} placeholder="e.g. 3" />
+          </Field>
+          <Field label="Area (sq ft)">
+            <input className={inputCls} type="number" min="1" value={area} onChange={(e) => setArea(e.target.value)} placeholder="e.g. 1450" />
+          </Field>
+        </div>
+
+        <Field label="Description" required>
+          <textarea className={textareaCls} rows={4} value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Full property description..." />
+        </Field>
+      </Section>
+
+      {/* Additional Details */}
+      <Section title="Additional Details" icon="📄">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+          <Field label="Developer Name">
+            <input className={inputCls} value={developerName} onChange={(e) => setDeveloperName(e.target.value)} placeholder="e.g. DLF, Godrej Properties" />
+          </Field>
+          <Field label="Sector / Micro-location">
+            <input className={inputCls} value={sector} onChange={(e) => setSector(e.target.value)} placeholder="e.g. Sector 56, Electronic City" />
+          </Field>
+        </div>
+        
+        <Field label="About Developer">
+          <textarea className={textareaCls} rows={2} value={aboutDeveloper} onChange={(e) => setAboutDeveloper(e.target.value)} placeholder="Brief description of the developer..." />
+        </Field>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
           <Field label="Possession Date">
             <input className={inputCls} type="date" value={possessionDate} onChange={(e) => setPossessionDate(e.target.value)} />
           </Field>
-          <Field label="Total Units">
-            <input className={inputCls} type="number" min="1" value={totalUnits} onChange={(e) => setTotalUnits(e.target.value)} placeholder="e.g. 480" />
+          <Field label="Promotional Tag" hint="e.g. Selling Fast, No Brokerage, Pre-launch">
+            <input className={inputCls} value={promotionalTag} onChange={(e) => setPromotionalTag(e.target.value)} placeholder="e.g. Selling Fast" />
           </Field>
-          <Field label="Floors">
-            <input className={inputCls} type="number" min="1" value={floors} onChange={(e) => setFloors(e.target.value)} placeholder="e.g. 32" />
+        </div>
+
+        <Field label="Location Highlights" hint="Pipe (|) separated list of highlights. e.g. Near Mall | 5 mins from Metro">
+          <input className={inputCls} value={locationHighlights} onChange={(e) => setLocationHighlights(e.target.value)} placeholder="Near Mall | 5 mins from Metro" />
+        </Field>
+      </Section>
+
+      {/* Group Buying Settings */}
+      <Section title="Group Buying Settings" icon="👥">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+          <Field label="Total Slots" required hint="Maximum buyers allowed in this property's group">
+            <input className={inputCls} type="number" min="1" value={totalSlots} onChange={(e) => setTotalSlots(e.target.value)} />
+          </Field>
+          <Field label="Filled Slots" hint="Buyers who have already joined">
+            <input className={inputCls} type="number" min="0" value={filledSlots} onChange={(e) => setFilledSlots(e.target.value)} />
           </Field>
         </div>
       </Section>
 
-      {/* ── 2. Configurations (Pricing) ── */}
-      <Section title="Configurations & Pricing" icon="💰">
-        <div className="space-y-3">
-          {configs.map((config, i) => (
-            <div key={i} className="flex items-end gap-3 p-4 bg-[#FAF1E6]/40 rounded-xl border border-[#C7C0AE]/20">
-              <div className="flex-1 min-w-0">
-                <label className="block text-[10px] font-black text-[#313131]/60 uppercase tracking-wider mb-1.5">
-                  Type <span className="text-red-500">*</span>
-                </label>
-                <input
-                  className={inputCls}
-                  value={config.type}
-                  onChange={(e) => updateConfig(i, "type", e.target.value)}
-                  placeholder="e.g. 2BHK"
-                />
+      {/* Media */}
+      <Section title="Images & Media" icon="📸">
+        <p className="text-xs text-[#313131]/50 -mt-1">Upload images or paste a URL. First image is the main hero shown on listing cards.</p>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+          <ImageSlot
+            label="Hero Image (Main)"
+            hint="Big left image on property page"
+            value={heroImage}
+            onChange={setHeroImage}
+          />
+          <ImageSlot
+            label="Side Image 1"
+            hint="Top-right thumbnail (video/exterior)"
+            value={image2}
+            onChange={setImage2}
+          />
+          <ImageSlot
+            label="Side Image 2"
+            hint="Bottom-right thumbnail (outdoors)"
+            value={image3}
+            onChange={setImage3}
+          />
+        </div>
+
+        {/* Brochure */}
+        <div className="mt-6 pt-6 border-t border-[#C7C0AE]/20">
+          <p className="text-xs font-black text-[#313131]/70 uppercase tracking-wider mb-1">Brochure (PDF)</p>
+          <p className="text-[11px] text-[#313131]/40 mb-3">Upload a PDF file or paste a URL. This will power the "Download Brochure" button on the property page.</p>
+          <div className="flex items-center gap-4">
+            <div
+              onClick={() => brochureInputRef.current?.click()}
+              className="flex items-center gap-3 px-5 py-3 bg-[#FAF1E6]/60 border-2 border-dashed border-[#C7C0AE]/50 rounded-xl cursor-pointer hover:border-[#FFA100] hover:bg-[#FAF1E6] transition-all shrink-0"
+            >
+              <span className="text-2xl">📄</span>
+              <div>
+                <p className="text-xs font-bold text-[#313131]">Upload PDF</p>
+                <p className="text-[10px] text-[#313131]/50">
+                  {brochureUrl ? (
+                    <span className="text-emerald-600 font-semibold">✓ File selected</span>
+                  ) : "Click to choose"}
+                </p>
               </div>
-              <div className="flex-1 min-w-0">
-                <label className="block text-[10px] font-black text-[#313131]/60 uppercase tracking-wider mb-1.5">Carpet Area</label>
-                <input
-                  className={inputCls}
-                  value={config.carpetArea}
-                  onChange={(e) => updateConfig(i, "carpetArea", e.target.value)}
-                  placeholder="e.g. 1288 sqft"
-                />
-              </div>
-              <div className="flex-1 min-w-0">
-                <label className="block text-[10px] font-black text-[#313131]/60 uppercase tracking-wider mb-1.5">
-                  Starting Price <span className="text-red-500">*</span>
-                </label>
-                <input
-                  className={inputCls}
-                  value={config.startingPrice}
-                  onChange={(e) => updateConfig(i, "startingPrice", e.target.value)}
-                  placeholder="e.g. ₹2.52 Cr"
-                />
-              </div>
-              {configs.length > 1 && (
-                <button
-                  type="button"
-                  onClick={() => removeConfig(i)}
-                  className="shrink-0 w-9 h-9 flex items-center justify-center text-red-500 hover:bg-red-50 rounded-lg transition-colors cursor-pointer mb-0.5"
-                  title="Remove configuration"
-                >
-                  ✕
+            </div>
+            <input
+              ref={brochureInputRef}
+              type="file"
+              accept=".pdf,application/pdf"
+              className="hidden"
+              onChange={async (e) => {
+                const file = e.target.files?.[0];
+                if (file) setBrochureUrl(await readFileAsDataUrl(file));
+              }}
+            />
+            <div className="flex-1">
+              <input
+                className={inputCls}
+                value={brochureUrl.startsWith("data:") ? "" : brochureUrl}
+                onChange={(e) => setBrochureUrl(e.target.value)}
+                placeholder="Or paste PDF URL (e.g. https://example.com/brochure.pdf)"
+              />
+              {brochureUrl && (
+                <button type="button" onClick={() => setBrochureUrl("")} className="text-[10px] text-red-400 hover:text-red-600 font-semibold mt-1">
+                  ✕ Remove brochure
                 </button>
               )}
             </div>
-          ))}
-        </div>
-        <button
-          type="button"
-          onClick={addConfig}
-          className="w-full py-2.5 border-2 border-dashed border-[#C7C0AE]/60 hover:border-[#FFA100] hover:text-[#FFA100] text-[#313131]/50 text-sm font-bold rounded-xl transition-all cursor-pointer"
-        >
-          + Add Configuration
-        </button>
-      </Section>
-
-      {/* ── 3. Group Buying ── */}
-      <Section title="Group Buying Settings" icon="👥">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-          <Field label="Max Group Slots" required hint="Maximum number of buyers allowed in this group">
-            <input className={inputCls} type="number" min="1" value={groupSlots} onChange={(e) => setGroupSlots(e.target.value)} placeholder="e.g. 10" />
-          </Field>
-          <Field label="Slots Filled (Current)" hint="Number of buyers who have already joined">
-            <input className={inputCls} type="number" min="0" value={slotsFilled} onChange={(e) => setSlotsFilled(e.target.value)} placeholder="e.g. 4" />
-          </Field>
-          <Field label="Membership Fee (₹)" required hint="Amount charged to join this group">
-            <input className={inputCls} type="number" min="0" value={membershipFee} onChange={(e) => setMembershipFee(e.target.value)} placeholder="e.g. 5000" />
-          </Field>
-        </div>
-      </Section>
-
-      {/* ── 4. Media ── */}
-      <Section title="Images & Media" icon="📸">
-        <Field label="Hero Image" hint="This is the main image shown on listing cards and the property detail page">
-          <div className="flex items-start gap-5">
-            <div
-              className="w-40 h-32 rounded-xl border-2 border-dashed border-[#C7C0AE]/50 overflow-hidden bg-[#FAF1E6]/50 cursor-pointer hover:border-[#FFA100] transition-colors flex items-center justify-center shrink-0"
-              onClick={() => heroInputRef.current?.click()}
-            >
-              {heroPreview ? (
-                <img src={heroPreview} alt="Hero preview" className="w-full h-full object-cover" />
-              ) : (
-                <div className="text-center text-[#313131]/40">
-                  <div className="text-3xl mb-1">🖼️</div>
-                  <p className="text-[10px] font-bold">Click to upload</p>
-                </div>
-              )}
-            </div>
-            <div className="flex-1 space-y-3">
-              <button
-                type="button"
-                onClick={() => heroInputRef.current?.click()}
-                className="px-4 py-2 bg-[#313131] hover:bg-[#FFA100] hover:text-[#313131] text-white text-sm font-bold rounded-lg transition-all cursor-pointer"
-              >
-                Choose Image
-              </button>
-              <input ref={heroInputRef} type="file" accept="image/*" className="hidden" onChange={handleHeroImage} />
-              <p className="text-xs text-[#313131]/40">Or enter an image URL below:</p>
-              <input
-                className={inputCls}
-                value={heroImage.startsWith("data:") ? "" : heroImage}
-                onChange={(e) => { setHeroImage(e.target.value); setHeroPreview(e.target.value); }}
-                placeholder="/property_villa.png or https://..."
-              />
-            </div>
           </div>
-        </Field>
-      </Section>
-
-      {/* ── 5. Details ── */}
-      <Section title="Property Details" icon="📝">
-        <Field label="Short Tagline" hint="Shown on listing cards. Max 100 characters.">
-          <input className={inputCls} value={tagline} maxLength={100} onChange={(e) => setTagline(e.target.value)} placeholder="e.g. Premium living in the heart of Noida" />
-        </Field>
-        <Field label="Project Description">
-          <textarea className={textareaCls} rows={4} value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Full project description shown on the property detail page..." />
-        </Field>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-          <Field label="About Developer">
-            <textarea className={textareaCls} rows={3} value={aboutDeveloper} onChange={(e) => setAboutDeveloper(e.target.value)} placeholder="Brief paragraph about the developer and their track record..." />
-          </Field>
-          <Field label="Location Highlights">
-            <textarea className={textareaCls} rows={3} value={locationHighlights} onChange={(e) => setLocationHighlights(e.target.value)} placeholder="e.g. 2 min from Metro | 5 min from Expressway | Near DPS School" />
-          </Field>
         </div>
       </Section>
 
-      {/* ── 6. Amenities ── */}
+      {/* Amenities */}
       <Section title="Amenities" icon="🏊">
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2.5">
           {AMENITIES_OPTIONS.map((a) => (
@@ -390,42 +404,16 @@ export default function PropertyForm({ initial, mode }: FormProps) {
         </div>
       </Section>
 
-      {/* ── 7. Admin Controls ── */}
+      {/* Admin Controls */}
       <Section title="Admin Controls & Visibility" icon="⚙️">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
           <Field label="Status" required>
-            <select className={selectCls} value={status} onChange={(e) => setStatus(e.target.value as Property["status"])}>
+            <select className={selectCls} value={status} onChange={(e) => setStatus(e.target.value as "open" | "full" | "closed")}>
               {STATUSES.map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}
             </select>
           </Field>
-          <Field label="Promotional Tag" hint='e.g. "Selling Fast", "Limited Units", "New Launch"'>
-            <input className={inputCls} value={promotionalTag} onChange={(e) => setPromotionalTag(e.target.value)} placeholder="e.g. Selling Fast" />
-          </Field>
-        </div>
-
-        {/* Toggle Controls */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
-          {/* Best Price Badge */}
-          <div className="flex items-center justify-between p-4 bg-[#FAF1E6]/60 rounded-xl border border-[#C7C0AE]/20">
-            <div>
-              <p className="text-sm font-bold text-[#313131]">🏷️ Best Price Badge</p>
-              <p className="text-[11px] text-[#313131]/50 mt-0.5">Show a "Best Price" badge on the listing card</p>
-            </div>
-            <button
-              type="button"
-              onClick={() => setIsBestPrice(!isBestPrice)}
-              className={`w-12 h-7 rounded-full transition-all duration-300 cursor-pointer relative shrink-0 ${
-                isBestPrice ? "bg-[#94A692]" : "bg-[#C7C0AE]/40"
-              }`}
-            >
-              <span className={`absolute top-0.5 w-6 h-6 bg-white rounded-full shadow transition-all duration-300 ${
-                isBestPrice ? "left-5" : "left-0.5"
-              }`} />
-            </button>
-          </div>
-
-          {/* Featured */}
-          <div className="flex items-center justify-between p-4 bg-[#FAF1E6]/60 rounded-xl border border-[#C7C0AE]/20">
+          
+          <div className="flex items-center justify-between p-4 bg-[#FAF1E6]/60 rounded-xl border border-[#C7C0AE]/20 mt-6">
             <div>
               <p className="text-sm font-bold text-[#313131]">⭐ Featured on Homepage</p>
               <p className="text-[11px] text-[#313131]/50 mt-0.5">Show this property in the homepage Featured grid</p>
@@ -445,7 +433,7 @@ export default function PropertyForm({ initial, mode }: FormProps) {
         </div>
       </Section>
 
-      {/* ── Submit ── */}
+      {/* Submit */}
       <div className="flex items-center gap-4 pt-2">
         <button
           type="submit"
@@ -461,9 +449,6 @@ export default function PropertyForm({ initial, mode }: FormProps) {
         >
           Cancel
         </button>
-        {mode === "edit" && (
-          <p className="text-xs text-[#313131]/40 ml-auto">Changes are saved to browser storage (Phase 1)</p>
-        )}
       </div>
     </form>
   );

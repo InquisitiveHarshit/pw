@@ -1,3 +1,5 @@
+"use client";
+
 import Link from "next/link";
 import PropertyForm from "@/components/admin/PropertyForm";
 
@@ -16,7 +18,7 @@ export default function NewPropertyPage() {
           <p className="text-sm text-[#313131]/50 mt-1">Fill out the details below to list a new property.</p>
         </div>
       </div>
-      
+
       <PropertyForm mode="create" />
     </div>
   );

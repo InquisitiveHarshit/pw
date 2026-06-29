@@ -2,7 +2,13 @@
 
 import React, { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
-import { getPropertyById, type Property } from "@/lib/propertyStore";
+import { getProperty, type Property } from "@/lib/api/properties";
+
+// Helper to format price
+const formatPrice = (price?: number) => {
+  if (!price) return "₹0";
+  return `₹${(price / 10000000).toFixed(2)} Cr`;
+};
 
 export default function PropertyDetailsPage() {
   const params = useParams();
@@ -10,13 +16,20 @@ export default function PropertyDetailsPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (params.id) {
-      const prop = getPropertyById(params.id as string);
-      if (prop) {
-        setProperty(prop);
+    const fetchProperty = async () => {
+      if (params.id) {
+        try {
+          const res = await getProperty(params.id as string);
+          if (res.success && res.data) {
+            setProperty(res.data);
+          }
+        } catch (error) {
+          console.error("Failed to fetch property", error);
+        }
       }
-    }
-    setLoading(false);
+      setLoading(false);
+    };
+    fetchProperty();
   }, [params.id]);
 
   if (loading) {
@@ -39,6 +52,31 @@ export default function PropertyDetailsPage() {
     );
   }
 
+  // Derived values for the UI
+  const projectName = property.title;
+  const heroImage = property.images?.[0] || "/property_apartment.png";
+  const gallery = property.images || [];
+  const city = property.location;
+  const sector = property.sector || "Premium Location"; 
+  const developerName = property.developerName || property.postedBy?.name || "Developer";
+  const statusStr = property.status === "open" ? "Under Construction" : "Ready to Move";
+  const possessionDate = property.possessionDate || property.createdAt;
+  const priceFormatted = formatPrice(property.price);
+  
+  // Create a mock configuration array from the single backend property fields
+  const configurations = [
+    {
+      type: property.bhk ? `${property.bhk} BHK` : "Layout",
+      carpetArea: property.area ? `${property.area} sqft` : "TBD",
+      startingPrice: priceFormatted,
+    }
+  ];
+
+  const amenities = property.amenities || [];
+  const locationHighlights = property.locationHighlights || "Near City Center | Close to Metro Station | Premium Connectivity";
+  const description = property.description;
+  const aboutDeveloper = property.aboutDeveloper || `Developed by ${developerName}. Bringing premium living to you.`;
+
   return (
     <div className="min-h-screen bg-gray-50 pb-20 font-sans text-[#313131]">
       
@@ -48,8 +86,8 @@ export default function PropertyDetailsPage() {
           {/* Main Image */}
           <div className="w-full md:w-2/3 h-[250px] md:h-full relative group cursor-pointer">
             <img 
-              src={property.heroImage} 
-              alt={property.projectName} 
+              src={heroImage} 
+              alt={projectName} 
               className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
               onError={(e) => { (e.target as HTMLImageElement).src = "/property_apartment.png"; }}
             />
@@ -62,8 +100,8 @@ export default function PropertyDetailsPage() {
           <div className="w-full md:w-1/3 flex flex-row md:flex-col gap-2 h-[120px] md:h-full">
             <div className="w-1/2 md:w-full h-full relative group cursor-pointer overflow-hidden">
               <img 
-                src={property.gallery[0] || property.heroImage} 
-                alt={`${property.projectName} Video`} 
+                src={gallery[1] || heroImage} 
+                alt={`${projectName} Video`} 
                 className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
                 onError={(e) => { (e.target as HTMLImageElement).src = "/property_condo.png"; }}
               />
@@ -76,8 +114,8 @@ export default function PropertyDetailsPage() {
             </div>
             <div className="w-1/2 md:w-full h-full relative group cursor-pointer overflow-hidden">
               <img 
-                src={property.gallery[1] || property.heroImage} 
-                alt={`${property.projectName} Outdoors`} 
+                src={gallery[2] || heroImage} 
+                alt={`${projectName} Outdoors`} 
                 className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
                 onError={(e) => { (e.target as HTMLImageElement).src = "/property_villa.png"; }}
               />
@@ -95,23 +133,23 @@ export default function PropertyDetailsPage() {
             
             {/* Breadcrumb */}
             <div className="text-[10px] text-gray-500 font-medium tracking-wide">
-              Home &gt; Projects in {property.city} &gt; {property.sector} &gt; {property.projectName}
+              Home &gt; Projects in {city} &gt; {sector} &gt; {projectName}
             </div>
 
             {/* Title Header */}
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
               <div className="flex items-start gap-4">
                 <div className="w-14 h-14 rounded-lg bg-[#FAF1E6] border border-[#C7C0AE]/30 flex items-center justify-center shrink-0">
-                  <span className="text-xl font-bold text-[#FFA100]">{property.developerName[0]}</span>
+                  <span className="text-xl font-bold text-[#FFA100]">{developerName[0]?.toUpperCase()}</span>
                 </div>
                 <div>
                   <h1 className="text-2xl font-extrabold tracking-tight flex items-center gap-2">
-                    {property.projectName}
+                    {projectName}
                     <button className="text-gray-400 hover:text-red-500 transition-colors">
                       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"></path></svg>
                     </button>
                   </h1>
-                  <p className="text-sm text-gray-600 mt-1">{property.sector}, {property.city}</p>
+                  <p className="text-sm text-gray-600 mt-1">{sector}, {city}</p>
                 </div>
               </div>
               <button className="w-full sm:w-auto px-6 py-2.5 bg-[#0078DB] hover:bg-[#0060B0] text-white font-bold rounded text-sm transition-colors shadow-sm">
@@ -121,6 +159,11 @@ export default function PropertyDetailsPage() {
 
             {/* Tags */}
             <div className="flex flex-wrap gap-2 pt-2">
+              {property.promotionalTag && (
+                <span className="px-3 py-1 bg-red-50 text-red-700 border border-red-200 text-[10px] font-bold rounded flex items-center gap-1">
+                  🔥 {property.promotionalTag}
+                </span>
+              )}
               <span className="px-3 py-1 bg-teal-500 text-white text-[10px] font-bold uppercase rounded flex items-center gap-1">
                 ✓ RERA
               </span>
@@ -140,9 +183,11 @@ export default function PropertyDetailsPage() {
               <div>
                 <p className="text-[10px] text-gray-500 font-bold uppercase tracking-wider">Construction Status</p>
                 <p className="text-base font-extrabold text-[#004A8F] mt-0.5">
-                  {property.status === "active" ? "Under Construction" : "Ready to Move"}
+                  {statusStr}
                 </p>
-                <p className="text-xs text-gray-600 mt-1">Completion in {new Date(property.possessionDate).toLocaleDateString('en-US', { month: 'short', year: 'numeric'})}</p>
+                {property.possessionDate && (
+                  <p className="text-xs text-gray-600 mt-1">Possession in {new Date(property.possessionDate).toLocaleDateString('en-US', { month: 'short', year: 'numeric'})}</p>
+                )}
               </div>
               <button className="text-[#0078DB]">
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
@@ -155,23 +200,39 @@ export default function PropertyDetailsPage() {
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
                   <div className="flex items-baseline gap-2">
-                    <span className="text-3xl font-extrabold">{property.configurations[0]?.startingPrice}</span>
+                    <span className="text-3xl font-extrabold">{configurations[0]?.startingPrice}</span>
                     <span className="text-xs font-semibold text-[#0078DB]">+ Charges</span>
                   </div>
                   <p className="text-[10px] text-gray-500 font-bold uppercase tracking-wider mt-1">Price Range</p>
-                  <p className="text-sm font-bold text-gray-800 mt-1">{property.configurations.map(c => c.type).join(", ")} {property.propertyType}</p>
+                  <p className="text-sm font-bold text-gray-800 mt-1">{configurations.map(c => c.type).join(", ")} {property.type}</p>
                 </div>
-                <button className="w-full sm:w-auto px-5 py-2.5 border-2 border-[#0078DB] text-[#0078DB] hover:bg-[#0078DB]/5 font-bold rounded flex items-center justify-center gap-2 text-sm transition-colors">
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
-                  Download Brochure
-                </button>
+                {property.brochureUrl ? (
+                  <a
+                    href={property.brochureUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="w-full sm:w-auto px-5 py-2.5 border-2 border-[#0078DB] text-[#0078DB] hover:bg-[#0078DB]/5 font-bold rounded flex items-center justify-center gap-2 text-sm transition-colors"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+                    Download Brochure
+                  </a>
+                ) : (
+                  <button
+                    disabled
+                    title="No brochure available"
+                    className="w-full sm:w-auto px-5 py-2.5 border-2 border-gray-200 text-gray-400 font-bold rounded flex items-center justify-center gap-2 text-sm cursor-not-allowed"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+                    Brochure Not Available
+                  </button>
+                )}
               </div>
 
               {/* Price Tabs Mock */}
               <div className="flex gap-2 mt-4">
-                {property.configurations.map((config, idx) => (
+                {configurations.map((config, idx) => (
                   <div key={idx} className={`px-4 py-3 border rounded-lg cursor-pointer ${idx === 0 ? "border-[#0078DB] bg-[#F4F9FF]" : "border-gray-200"}`}>
-                    <p className="text-sm font-bold">{config.type} {property.propertyType}</p>
+                    <p className="text-sm font-bold">{config.type} {property.type}</p>
                     <p className="text-[10px] text-gray-500 mt-1">Carpet Area</p>
                     <p className="text-xs font-semibold">{config.carpetArea}</p>
                     <p className="text-sm font-bold mt-2">{config.startingPrice} <span className="text-[10px] text-[#0078DB] font-normal">+ Charges</span></p>
@@ -188,9 +249,9 @@ export default function PropertyDetailsPage() {
               </div>
               
               <div className="flex gap-2 mb-6 overflow-x-auto pb-2 scrollbar-hide">
-                {property.configurations.map((config, idx) => (
+                {configurations.map((config, idx) => (
                   <button key={idx} className={`shrink-0 px-4 py-1.5 rounded-full text-xs font-bold border ${idx === 0 ? "bg-[#F4F9FF] border-[#0078DB] text-[#0078DB]" : "border-gray-300 text-gray-600"}`}>
-                    {config.type} {property.propertyType}
+                    {config.type} {property.type}
                   </button>
                 ))}
               </div>
@@ -198,7 +259,7 @@ export default function PropertyDetailsPage() {
               <div className="text-xs text-gray-500 mb-2">1 Floor Plan Available</div>
               
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-                {property.configurations.map((config, idx) => (
+                {configurations.map((config, idx) => (
                   <div key={idx} className="border border-gray-200 rounded-xl overflow-hidden hover:shadow-md transition-shadow">
                     <div className="p-4 bg-white">
                       <div className="flex items-center gap-2 mb-1">
@@ -214,8 +275,8 @@ export default function PropertyDetailsPage() {
                       <div className="font-extrabold text-base">{config.startingPrice}</div>
                       
                       <div className="mt-3 bg-gray-50 p-2 rounded text-[10px] text-gray-600">
-                        <p>Under Construction</p>
-                        <p>{new Date(property.possessionDate).toLocaleDateString('en-US', { month: 'short', year: '2-digit'})} possession</p>
+                        <p>{statusStr}</p>
+                        <p>{new Date(possessionDate).toLocaleDateString('en-US', { month: 'short', year: '2-digit'})} possession</p>
                       </div>
                       
                       <button className="mt-4 w-full text-center text-[#0078DB] font-bold text-xs py-2 hover:bg-gray-50 flex items-center justify-center gap-1 border-t border-gray-100">
@@ -241,10 +302,10 @@ export default function PropertyDetailsPage() {
                 </div>
                 
                 <div className="h-32 bg-black/40 relative">
-                  <img src={property.heroImage} className="w-full h-full object-cover opacity-50" alt="Background" onError={(e) => { (e.target as HTMLImageElement).src = "/property_condo.png"; }} />
+                  <img src={heroImage} className="w-full h-full object-cover opacity-50" alt="Background" onError={(e) => { (e.target as HTMLImageElement).src = "/property_condo.png"; }} />
                   <div className="absolute inset-0 flex flex-col justify-center items-center text-center p-4">
                      <p className="text-yellow-400 text-[10px] font-bold mb-1">Our Expertise</p>
-                     <p className="text-white font-bold text-sm leading-tight">{property.locationHighlights.split("|")[0]}</p>
+                     <p className="text-white font-bold text-sm leading-tight">{locationHighlights.split("|")[0]}</p>
                      <div className="w-8 h-8 rounded-full bg-black/50 border border-white/20 flex items-center justify-center mt-3">
                        <span className="text-white text-xs">▶</span>
                      </div>
@@ -257,7 +318,7 @@ export default function PropertyDetailsPage() {
                       <img src="https://i.pravatar.cc/150?u=a042581f4e29026704d" alt="Broker" className="w-full h-full object-cover" />
                     </div>
                     <div>
-                      <p className="font-bold text-sm">KAPUR INFRATECH</p>
+                      <p className="font-bold text-sm">{developerName.toUpperCase()}</p>
                       <p className="text-[10px] text-gray-400">Verified Partner</p>
                     </div>
                   </div>
@@ -272,12 +333,12 @@ export default function PropertyDetailsPage() {
             <div className="pt-8">
               <div className="flex justify-between items-end mb-2">
                 <h2 className="text-xl font-extrabold text-gray-900">Top Facilities</h2>
-                <a href="#" className="text-xs font-bold text-[#0078DB] hover:underline">View All ({property.amenities.length})</a>
+                <a href="#" className="text-xs font-bold text-[#0078DB] hover:underline">View All ({amenities.length})</a>
               </div>
-              <p className="text-xs text-gray-500 mb-6">{property.projectName} presents an exclusive opportunity to own a stunning home...</p>
+              <p className="text-xs text-gray-500 mb-6">{projectName} presents an exclusive opportunity to own a stunning home...</p>
               
               <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-3">
-                {property.amenities.slice(0, 6).map((amenity, idx) => (
+                {amenities.slice(0, 6).map((amenity, idx) => (
                   <div key={idx} className="bg-gray-50 rounded-xl p-3 flex flex-col items-center justify-center text-center gap-2 hover:bg-gray-100 transition-colors cursor-pointer border border-transparent hover:border-gray-200">
                     <div className="w-10 h-10 rounded-full bg-white shadow-sm flex items-center justify-center text-lg text-[#0078DB]">
                       {/* Using generic emojis as icons for now */}
@@ -302,10 +363,10 @@ export default function PropertyDetailsPage() {
                 <h2 className="text-xl font-extrabold text-gray-900">Location Advantages</h2>
                 <a href="#" className="text-xs font-bold text-[#0078DB] hover:underline">View All</a>
               </div>
-              <p className="text-xs text-gray-500 mb-6">{property.sector} is one of the prime locations to buy a home in {property.city}...</p>
+              <p className="text-xs text-gray-500 mb-6">{city} is one of the prime locations to buy a home...</p>
               
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                {property.locationHighlights.split("|").map((highlight, idx) => (
+                {locationHighlights.split("|").map((highlight, idx) => (
                   <div key={idx} className="border border-gray-200 rounded-lg p-3 flex items-center gap-3">
                     <div className="w-8 h-8 rounded-full bg-blue-50 text-blue-500 flex items-center justify-center shrink-0">
                       🏢
@@ -321,10 +382,10 @@ export default function PropertyDetailsPage() {
 
             {/* About Project */}
             <div className="pt-8 pb-8">
-              <h2 className="text-xl font-extrabold text-gray-900 mb-4">More about {property.projectName}</h2>
+              <h2 className="text-xl font-extrabold text-gray-900 mb-4">More about {projectName}</h2>
               <div className="text-sm text-gray-600 leading-relaxed space-y-4">
-                <p>{property.description}</p>
-                <p>{property.aboutDeveloper}</p>
+                <p>{description}</p>
+                <p>{aboutDeveloper}</p>
               </div>
               <button className="mt-2 text-xs font-bold text-[#0078DB] hover:underline">
                 Read more
