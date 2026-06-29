@@ -1,6 +1,5 @@
 "use client";
 
-import { useEffect } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 
@@ -16,17 +15,6 @@ const navItems = [
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
-
-  useEffect(() => {
-    // Only run on the client
-    if (typeof window !== "undefined") {
-      const token = localStorage.getItem("pw_token");
-      // If we are not on the login page and there is no token, redirect to login
-      if (!token && pathname !== "/admin/login") {
-        router.push("/admin/login");
-      }
-    }
-  }, [pathname, router]);
 
   // Skip sidebar on the login page
   const isLoginPage = pathname === "/admin/login";
