@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
 
 const navItems = [
   { label: "Dashboard",   href: "/admin",          icon: "⊞" },
@@ -18,7 +19,50 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   // Skip sidebar on the login page
   const isLoginPage = pathname === "/admin/login";
+
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (isLoginPage) {
+      setLoading(false);
+      return;
+    }
+    
+    const token = localStorage.getItem("pw_token");
+    const userStr = localStorage.getItem("pw_user");
+    let isAdmin = false;
+    if (userStr) {
+      try {
+        const user = JSON.parse(userStr);
+        if (user.role === "admin") isAdmin = true;
+      } catch (e) {}
+    }
+
+    if (!token || !isAdmin) {
+      router.replace("/admin/login");
+    } else {
+      setIsAuthenticated(true);
+      setLoading(false);
+    }
+  }, [pathname, isLoginPage, router]);
+
+  const handleLogout = () => {
+    localStorage.removeItem("pw_token");
+    localStorage.removeItem("pw_user");
+    router.replace("/admin/login");
+  };
+
   if (isLoginPage) return <>{children}</>;
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-[#F5F4F0] flex items-center justify-center font-vietnam flex-col gap-4">
+        <div className="w-8 h-8 border-4 border-[#FFA100] border-t-transparent rounded-full animate-spin"></div>
+        <p className="font-bold text-[#313131]">Loading Admin Panel...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex bg-[#F5F4F0] font-vietnam">
@@ -68,6 +112,12 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
         {/* Footer links */}
         <div className="px-3 py-5 border-t border-white/10 space-y-1">
+          <button
+            onClick={handleLogout}
+            className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold text-white hover:text-white bg-red-500/20 hover:bg-red-500/40 transition-all text-left"
+          >
+            <span>⎋</span> Logout
+          </button>
           <Link
             href="/"
             className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold text-white/50 hover:text-white hover:bg-white/10 transition-all"

@@ -22,6 +22,12 @@ export default function AdminUsersPage() {
   const [search, setSearch] = useState("");
   const [expanded, setExpanded] = useState<string | null>(null);
 
+  // New User State
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [newUserData, setNewUserData] = useState({ name: "", email: "", password: "", phone: "", role: "admin" });
+  const [addLoading, setAddLoading] = useState(false);
+  const [addError, setAddError] = useState("");
+
   const getHeaders = () => {
     const token = typeof window !== "undefined" ? localStorage.getItem("pw_token") : null;
     return {
@@ -46,6 +52,33 @@ export default function AdminUsersPage() {
     fetchUsers();
   }, []);
 
+  const handleAddUser = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setAddLoading(true);
+    setAddError("");
+    try {
+      const res = await fetch(`${BASE}/users`, {
+        method: "POST",
+        headers: getHeaders(),
+        body: JSON.stringify(newUserData),
+      });
+      const data = await res.json();
+      if (!data.success) {
+        setAddError(data.message || "Failed to create user.");
+      } else {
+        setShowAddModal(false);
+        setNewUserData({ name: "", email: "", password: "", phone: "", role: "admin" });
+        // Automatically add to list
+        setUsers(prev => [data.data, ...prev]);
+        setTotal(prev => prev + 1);
+      }
+    } catch (err) {
+      setAddError("An error occurred while creating the user.");
+    } finally {
+      setAddLoading(false);
+    }
+  };
+
   const filtered = users.filter(
     (u) =>
       u.name.toLowerCase().includes(search.toLowerCase()) ||
@@ -53,7 +86,8 @@ export default function AdminUsersPage() {
   );
 
   return (
-    <div className="space-y-6">
+    <>
+      <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
@@ -72,6 +106,12 @@ export default function AdminUsersPage() {
             className="pl-9 pr-4 py-2.5 border border-[#C7C0AE]/50 rounded-xl text-sm focus:outline-none focus:border-[#FFA100] transition-colors w-64"
           />
         </div>
+        <button
+          onClick={() => setShowAddModal(true)}
+          className="px-4 py-2 bg-[#FFA100] hover:bg-[#FF8C00] text-white text-sm font-bold rounded-xl transition-colors"
+        >
+          + Add User/Admin
+        </button>
       </div>
 
       {error && (
@@ -147,7 +187,7 @@ export default function AdminUsersPage() {
                         <div className="ml-11">
                           <p className="text-xs font-bold text-[#313131]/50 uppercase tracking-wider mb-2">Group Memberships</p>
                           <div className="space-y-1.5">
-                            {user.joinedGroups.map((g) => (
+                            {user.joinedGroups?.map((g) => (
                               <div key={g._id} className="flex items-center gap-3 text-sm">
                                 <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
                                   g.status === "complete" ? "bg-emerald-100 text-emerald-700" : "bg-amber-100 text-amber-700"
@@ -169,5 +209,93 @@ export default function AdminUsersPage() {
         </div>
       )}
     </div>
+      
+      {/* Add User Modal */}
+      {showAddModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-2xl p-6 w-full max-w-md shadow-xl border border-[#C7C0AE]/30 relative">
+            <button
+              onClick={() => setShowAddModal(false)}
+              className="absolute top-4 right-4 text-[#313131]/40 hover:text-[#313131] transition-colors"
+            >
+              ✕
+            </button>
+            <h3 className="text-xl font-extrabold text-[#313131] mb-5 font-vietnam">Add New User</h3>
+            {addError && (
+              <div className="mb-4 bg-red-50 text-red-600 text-sm font-semibold p-3 rounded-xl border border-red-200">
+                ⚠️ {addError}
+              </div>
+            )}
+            <form onSubmit={handleAddUser} className="space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-[#313131]/60 uppercase tracking-wider mb-1.5">Name</label>
+                <input
+                  type="text"
+                  required
+                  value={newUserData.name}
+                  onChange={(e) => setNewUserData({ ...newUserData, name: e.target.value })}
+                  className="w-full px-4 py-2.5 rounded-xl border border-[#C7C0AE]/50 text-sm focus:outline-none focus:border-[#FFA100] transition-colors"
+                  placeholder="e.g. Rahul Sharma"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-[#313131]/60 uppercase tracking-wider mb-1.5">Email</label>
+                <input
+                  type="email"
+                  required
+                  value={newUserData.email}
+                  onChange={(e) => setNewUserData({ ...newUserData, email: e.target.value })}
+                  className="w-full px-4 py-2.5 rounded-xl border border-[#C7C0AE]/50 text-sm focus:outline-none focus:border-[#FFA100] transition-colors"
+                  placeholder="e.g. rahul@example.com"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-[#313131]/60 uppercase tracking-wider mb-1.5">Password</label>
+                <input
+                  type="password"
+                  required
+                  minLength={6}
+                  value={newUserData.password}
+                  onChange={(e) => setNewUserData({ ...newUserData, password: e.target.value })}
+                  className="w-full px-4 py-2.5 rounded-xl border border-[#C7C0AE]/50 text-sm focus:outline-none focus:border-[#FFA100] transition-colors"
+                  placeholder="Min 6 characters"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-[#313131]/60 uppercase tracking-wider mb-1.5">Phone (Optional)</label>
+                <input
+                  type="text"
+                  value={newUserData.phone}
+                  onChange={(e) => setNewUserData({ ...newUserData, phone: e.target.value })}
+                  className="w-full px-4 py-2.5 rounded-xl border border-[#C7C0AE]/50 text-sm focus:outline-none focus:border-[#FFA100] transition-colors"
+                  placeholder="e.g. +91 9998887776"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-[#313131]/60 uppercase tracking-wider mb-1.5">Role</label>
+                <select
+                  value={newUserData.role}
+                  onChange={(e) => setNewUserData({ ...newUserData, role: e.target.value })}
+                  className="w-full px-4 py-2.5 rounded-xl border border-[#C7C0AE]/50 text-sm focus:outline-none focus:border-[#FFA100] transition-colors bg-white"
+                >
+                  <option value="admin">Admin</option>
+                  <option value="user">User</option>
+                </select>
+              </div>
+              
+              <div className="pt-2">
+                <button
+                  type="submit"
+                  disabled={addLoading}
+                  className="w-full py-3 bg-[#FFA100] hover:bg-[#FF8C00] text-white font-bold rounded-xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {addLoading ? "Creating..." : "Create User"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+    </>
   );
 }
