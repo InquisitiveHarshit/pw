@@ -54,7 +54,8 @@ function BlogCard({ blog }: { blog: any }) {
 export default async function BlogsPage() {
   let blogs = [];
   try {
-    const res = await fetch("http://localhost:5000/api/blogs", {
+    const BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api";
+    const res = await fetch(`${BASE_URL}/blogs`, {
       cache: "no-store",
     });
     if (res.ok) {

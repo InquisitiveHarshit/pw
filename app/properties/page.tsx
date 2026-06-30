@@ -67,7 +67,8 @@ function PropertyCard({ property }: { property: any }) {
 export default async function PropertiesPage() {
   let properties = [];
   try {
-    const res = await fetch("http://localhost:5000/api/properties", {
+    const BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api";
+    const res = await fetch(`${BASE_URL}/properties`, {
       cache: "no-store",
     });
     if (res.ok) {
