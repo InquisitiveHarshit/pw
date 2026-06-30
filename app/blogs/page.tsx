@@ -37,7 +37,7 @@ function BlogCard({ blog }: { blog: any }) {
           <Link href={`/blogs/${blog._id}`}>{blog.title}</Link>
         </h3>
         <p className="text-[#313131]/70 text-sm mb-6 line-clamp-3 flex-1">
-          {blog.content?.substring(0, 150) || "Read the full article to learn more about the latest real estate trends and group buying opportunities."}
+          {blog.excerpt || (blog.content?.replace(/<[^>]*>/g, "")?.substring(0, 150)) || "Read the full article to learn more about the latest real estate trends and group buying opportunities."}
         </p>
         <Link
           href={`/blogs/${blog._id}`}
