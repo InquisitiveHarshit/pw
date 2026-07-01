@@ -1,42 +1,24 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import {
   createProperty,
   updateProperty,
   type Property,
 } from "@/lib/api/properties";
+import { getLocalities, type Locality } from "@/lib/api/localities";
 
 type FormProps = {
   initial?: Property;
   mode: "create" | "edit";
 };
 
-const PROPERTY_TYPES = ["apartment", "villa", "plot", "commercial", "other"] as const;
 const STATUSES = [
   { value: "open", label: "Open" },
   { value: "full", label: "Full" },
   { value: "closed", label: "Closed" },
 ] as const;
-
-export const AMENITIES_OPTIONS = [
-  "Swimming Pool",
-  "Gymnasium",
-  "Clubhouse",
-  "24/7 Security",
-  "Power Backup",
-  "EV Charging",
-  "Landscaped Gardens",
-  "Jogging Track",
-  "Parking",
-  "Kids Play Area",
-  "Lift / Elevator",
-  "CCTV Surveillance",
-  "Intercom",
-  "Indoor Games Room",
-  "Yoga / Meditation Area",
-];
 
 // Section wrapper
 function Section({ title, icon, children }: { title: string; icon: string; children: React.ReactNode }) {
@@ -68,7 +50,7 @@ const inputCls = "w-full px-4 py-2.5 bg-[#FAF1E6]/40 border border-[#C7C0AE]/40 
 const selectCls = `${inputCls} cursor-pointer`;
 const textareaCls = `${inputCls} resize-none`;
 
-// Reusable image upload slot component (safe to use hooks inside since it's a real component)
+// Reusable image upload slot component
 function ImageSlot({ label, hint, value, onChange }: { label: string; hint: string; value: string; onChange: (val: string) => void }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const readFile = (file: File): Promise<string> =>
@@ -131,15 +113,24 @@ export default function PropertyForm({ initial, mode }: FormProps) {
   const [saving, setSaving] = useState(false);
   const [toast, setToast] = useState<{ msg: string; type: "success" | "error" } | null>(null);
 
+  const [localities, setLocalities] = useState<Locality[]>([]);
+
+  useEffect(() => {
+    getLocalities().then((res) => {
+      if (res.success) setLocalities(res.data);
+    });
+  }, []);
+
   // Form State
   const [title, setTitle] = useState(initial?.title ?? "");
   const [description, setDescription] = useState(initial?.description ?? "");
   const [location, setLocation] = useState(initial?.location ?? "");
-  const [price, setPrice] = useState(initial?.price?.toString() ?? "");
-  const [propertyType, setPropertyType] = useState(initial?.type ?? "apartment");
-  const [bhk, setBhk] = useState(initial?.bhk?.toString() ?? "");
-  const [area, setArea] = useState(initial?.area?.toString() ?? "");
+  
+  const [units, setUnits] = useState(initial?.units ?? []);
+  
   const [amenities, setAmenities] = useState<string[]>(initial?.amenities ?? []);
+  const [newAmenity, setNewAmenity] = useState("");
+
   const [totalSlots, setTotalSlots] = useState(initial?.totalSlots?.toString() ?? "10");
   const [filledSlots, setFilledSlots] = useState(initial?.filledSlots?.toString() ?? "0");
   const [status, setStatus] = useState(initial?.status ?? "open");
@@ -149,7 +140,7 @@ export default function PropertyForm({ initial, mode }: FormProps) {
   const [image3, setImage3] = useState(initial?.images?.[2] ?? "");
   const [brochureUrl, setBrochureUrl] = useState(initial?.brochureUrl ?? "");
   
-  // New Configurable Fields
+  // Additional Configurable Fields
   const [developerName, setDeveloperName] = useState(initial?.developerName ?? "");
   const [aboutDeveloper, setAboutDeveloper] = useState(initial?.aboutDeveloper ?? "");
   const [sector, setSector] = useState(initial?.sector ?? "");
@@ -159,10 +150,6 @@ export default function PropertyForm({ initial, mode }: FormProps) {
   const [locationHighlights, setLocationHighlights] = useState(initial?.locationHighlights ?? "");
   const [promotionalTag, setPromotionalTag] = useState(initial?.promotionalTag ?? "");
 
-  const toggleAmenity = (a: string) => {
-    setAmenities((prev) => prev.includes(a) ? prev.filter((x) => x !== a) : [...prev, a]);
-  };
-
   const brochureInputRef = useRef<HTMLInputElement>(null);
   const readFileAsDataUrl = (file: File): Promise<string> =>
     new Promise((resolve) => {
@@ -171,11 +158,45 @@ export default function PropertyForm({ initial, mode }: FormProps) {
       reader.readAsDataURL(file);
     });
 
+  const addUnit = () => {
+    setUnits([...units, { propertyType: "", bhk: "", area: "", price: "", discountPrice: "" }]);
+  };
+
+  const updateUnit = (index: number, field: string, value: string) => {
+    const newUnits = [...units];
+    newUnits[index] = { ...newUnits[index], [field]: value };
+    setUnits(newUnits);
+  };
+
+  const removeUnit = (index: number) => {
+    setUnits(units.filter((_, i) => i !== index));
+  };
+
+  const addAmenity = () => {
+    if (newAmenity.trim() && !amenities.includes(newAmenity.trim())) {
+      setAmenities([...amenities, newAmenity.trim()]);
+      setNewAmenity("");
+    }
+  };
+
+  const removeAmenity = (index: number) => {
+    setAmenities(amenities.filter((_, i) => i !== index));
+  };
+
+  const moveAmenity = (index: number, direction: 'up' | 'down') => {
+    const newAmenities = [...amenities];
+    if (direction === 'up' && index > 0) {
+      [newAmenities[index], newAmenities[index - 1]] = [newAmenities[index - 1], newAmenities[index]];
+    } else if (direction === 'down' && index < newAmenities.length - 1) {
+      [newAmenities[index], newAmenities[index + 1]] = [newAmenities[index + 1], newAmenities[index]];
+    }
+    setAmenities(newAmenities);
+  };
+
   const validate = () => {
     if (!title.trim()) return "Title is required.";
     if (!description.trim()) return "Description is required.";
     if (!location.trim()) return "Location is required.";
-    if (!price || Number(price) <= 0) return "Valid price is required.";
     if (!totalSlots || Number(totalSlots) < 1) return "Total slots must be at least 1.";
     return null;
   };
@@ -194,10 +215,7 @@ export default function PropertyForm({ initial, mode }: FormProps) {
       title: title.trim(),
       description: description.trim(),
       location: location.trim(),
-      price: Number(price),
-      type: propertyType,
-      bhk: bhk ? Number(bhk) : undefined,
-      area: area ? Number(area) : undefined,
+      units,
       amenities,
       totalSlots: Number(totalSlots),
       filledSlots: Number(filledSlots),
@@ -242,35 +260,65 @@ export default function PropertyForm({ initial, mode }: FormProps) {
       {/* Basic Info */}
       <Section title="Basic Information" icon="📋">
         <Field label="Property Title" required>
-          <input className={inputCls} value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g. Sunrise Heights — 3 BHK Apartments" />
+          <input className={inputCls} value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g. Sunrise Heights" />
         </Field>
         
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+        <div className="grid grid-cols-1 gap-5">
           <Field label="Location" required>
-            <input className={inputCls} value={location} onChange={(e) => setLocation(e.target.value)} placeholder="e.g. Sector 56, Gurugram" />
-          </Field>
-          <Field label="Price (₹)" required>
-            <input className={inputCls} type="number" min="0" value={price} onChange={(e) => setPrice(e.target.value)} placeholder="e.g. 8500000" />
-          </Field>
-        </div>
-        
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-          <Field label="Property Type" required>
-            <select className={selectCls} value={propertyType} onChange={(e) => setPropertyType(e.target.value as "apartment" | "villa" | "plot" | "commercial" | "other")}>
-              {PROPERTY_TYPES.map((t) => <option key={t} value={t}>{t.charAt(0).toUpperCase() + t.slice(1)}</option>)}
+            <select className={selectCls} value={location} onChange={(e) => setLocation(e.target.value)}>
+              <option value="">Select a Locality...</option>
+              {localities.map((loc) => (
+                <option key={loc._id} value={loc.name}>{loc.name}</option>
+              ))}
             </select>
-          </Field>
-          <Field label="BHK">
-            <input className={inputCls} type="number" min="1" value={bhk} onChange={(e) => setBhk(e.target.value)} placeholder="e.g. 3" />
-          </Field>
-          <Field label="Area (sq ft)">
-            <input className={inputCls} type="number" min="1" value={area} onChange={(e) => setArea(e.target.value)} placeholder="e.g. 1450" />
           </Field>
         </div>
 
         <Field label="Description" required>
           <textarea className={textareaCls} rows={4} value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Full property description..." />
         </Field>
+      </Section>
+
+      {/* Units */}
+      <Section title="Property Units" icon="🏢">
+        <div className="space-y-4">
+          {units.map((unit, index) => (
+            <div key={index} className="p-4 bg-[#FAF1E6]/40 border border-[#C7C0AE]/40 rounded-xl relative">
+              <button
+                type="button"
+                onClick={() => removeUnit(index)}
+                className="absolute top-4 right-4 text-red-500 hover:text-red-700 text-xs font-bold"
+              >
+                Remove Unit
+              </button>
+              <h4 className="font-bold text-sm text-[#313131] mb-3">Unit {index + 1}</h4>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <Field label="Property Type">
+                  <input className={inputCls} value={unit.propertyType} onChange={(e) => updateUnit(index, "propertyType", e.target.value)} placeholder="e.g. Apartment" />
+                </Field>
+                <Field label="BHK">
+                  <input className={inputCls} value={unit.bhk} onChange={(e) => updateUnit(index, "bhk", e.target.value)} placeholder="e.g. 2 BHK" />
+                </Field>
+                <Field label="Area">
+                  <input className={inputCls} value={unit.area} onChange={(e) => updateUnit(index, "area", e.target.value)} placeholder="e.g. 1180 Sq.Ft." />
+                </Field>
+                <Field label="Price">
+                  <input className={inputCls} value={unit.price} onChange={(e) => updateUnit(index, "price", e.target.value)} placeholder="e.g. ₹85,00,000" />
+                </Field>
+                <Field label="Discount Price">
+                  <input className={inputCls} value={unit.discountPrice} onChange={(e) => updateUnit(index, "discountPrice", e.target.value)} placeholder="e.g. ₹81,00,000" />
+                </Field>
+              </div>
+            </div>
+          ))}
+          <button
+            type="button"
+            onClick={addUnit}
+            className="w-full py-3 border-2 border-dashed border-[#C7C0AE]/50 rounded-xl text-sm font-bold text-[#313131]/70 hover:bg-[#FAF1E6] hover:text-[#313131] transition-colors"
+          >
+            + Add Unit
+          </button>
+        </div>
       </Section>
 
       {/* Additional Details */}
@@ -386,21 +434,45 @@ export default function PropertyForm({ initial, mode }: FormProps) {
 
       {/* Amenities */}
       <Section title="Amenities" icon="🏊">
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2.5">
-          {AMENITIES_OPTIONS.map((a) => (
+        <div className="space-y-4">
+          <div className="flex gap-2">
+            <input
+              type="text"
+              value={newAmenity}
+              onChange={(e) => setNewAmenity(e.target.value)}
+              placeholder="Type an amenity (e.g. Swimming Pool) and press Enter or Add"
+              className={inputCls}
+              onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), addAmenity())}
+            />
             <button
-              key={a}
               type="button"
-              onClick={() => toggleAmenity(a)}
-              className={`px-3 py-2 rounded-xl text-xs font-semibold text-left transition-all cursor-pointer border ${
-                amenities.includes(a)
-                  ? "bg-[#313131] text-white border-[#313131] shadow-sm"
-                  : "bg-[#FAF1E6]/40 text-[#313131]/70 border-[#C7C0AE]/40 hover:border-[#313131]/40"
-              }`}
+              onClick={addAmenity}
+              className="px-6 py-2.5 bg-[#313131] text-white font-bold rounded-xl hover:bg-[#FFA100] hover:text-[#313131] transition-colors"
             >
-              {amenities.includes(a) ? "✓ " : ""}{a}
+              Add
             </button>
-          ))}
+          </div>
+          
+          {amenities.length > 0 && (
+            <div className="border border-[#C7C0AE]/30 rounded-xl overflow-hidden divide-y divide-[#C7C0AE]/20">
+              {amenities.map((amenity, index) => (
+                <div key={index} className="flex items-center justify-between p-3 bg-[#FAF1E6]/40 hover:bg-[#FAF1E6] transition-colors">
+                  <span className="font-semibold text-sm text-[#313131]">{amenity}</span>
+                  <div className="flex items-center gap-2">
+                    <button type="button" onClick={() => moveAmenity(index, 'up')} disabled={index === 0} className="text-[#313131]/50 hover:text-[#313131] disabled:opacity-30">
+                      ↑
+                    </button>
+                    <button type="button" onClick={() => moveAmenity(index, 'down')} disabled={index === amenities.length - 1} className="text-[#313131]/50 hover:text-[#313131] disabled:opacity-30">
+                      ↓
+                    </button>
+                    <button type="button" onClick={() => removeAmenity(index)} className="ml-2 text-red-500 hover:text-red-700 text-xs font-bold">
+                      Remove
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </Section>
 

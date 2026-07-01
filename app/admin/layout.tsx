@@ -8,6 +8,7 @@ const navItems = [
   { label: "Dashboard",   href: "/admin",          icon: "⊞" },
   { label: "Properties",  href: "/admin/properties", icon: "🏠" },
   { label: "Add Property",href: "/admin/properties/new", icon: "+" },
+  { label: "Localities",  href: "/admin/localities",    icon: "📍" },
   { label: "Groups",      href: "/admin/groups",    icon: "👥" },
   { label: "Blogs",       href: "/admin/blogs",     icon: "📝" },
   { label: "Users",       href: "/admin/users",     icon: "👤" },

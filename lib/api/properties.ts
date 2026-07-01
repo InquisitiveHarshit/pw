@@ -5,11 +5,14 @@ export type Property = {
   title: string;
   description: string;
   location: string;
-  price: number;
+  units: {
+    propertyType: string;
+    bhk: string;
+    area: string;
+    price: string;
+    discountPrice: string;
+  }[];
   images: string[];
-  type: string;
-  bhk?: number;
-  area?: number;
   amenities: string[];
   totalSlots?: number;  // hidden from guests
   filledSlots?: number; // hidden from guests

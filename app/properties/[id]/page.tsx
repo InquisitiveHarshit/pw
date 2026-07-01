@@ -4,9 +4,10 @@ import React, { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { getProperty, type Property } from "@/lib/api/properties";
 
-// Helper to format price
-const formatPrice = (price?: number) => {
-  if (!price) return "₹0";
+// Helper to format price (if needed for older data)
+const formatPrice = (price?: number | string) => {
+  if (!price) return "Price on Request";
+  if (typeof price === "string") return price;
   return `₹${(price / 10000000).toFixed(2)} Cr`;
 };
 
@@ -61,16 +62,22 @@ export default function PropertyDetailsPage() {
   const developerName = property.developerName || property.postedBy?.name || "Developer";
   const statusStr = property.status === "open" ? "Under Construction" : "Ready to Move";
   const possessionDate = property.possessionDate || property.createdAt;
-  const priceFormatted = formatPrice(property.price);
+  const priceFormatted = property.units?.[0]?.price || formatPrice((property as any).price);
   
-  // Create a mock configuration array from the single backend property fields
-  const configurations = [
-    {
-      type: property.bhk ? `${property.bhk} BHK` : "Layout",
-      carpetArea: property.area ? `${property.area} sqft` : "TBD",
-      startingPrice: priceFormatted,
-    }
-  ];
+  // Create a configuration array from the backend property units
+  const configurations = property.units?.length > 0 
+    ? property.units.map(unit => ({
+        type: unit.bhk ? `${unit.bhk}` : unit.propertyType || "Layout",
+        carpetArea: unit.area ? `${unit.area}` : "TBD",
+        startingPrice: unit.price || "Price on Request",
+      }))
+    : [
+        {
+          type: (property as any).bhk ? `${(property as any).bhk} BHK` : "Layout",
+          carpetArea: (property as any).area ? `${(property as any).area} sqft` : "TBD",
+          startingPrice: priceFormatted,
+        }
+      ];
 
   const amenities = property.amenities || [];
   const locationHighlights = property.locationHighlights || "Near City Center | Close to Metro Station | Premium Connectivity";
@@ -204,7 +211,7 @@ export default function PropertyDetailsPage() {
                     <span className="text-xs font-semibold text-[#0078DB]">+ Charges</span>
                   </div>
                   <p className="text-[10px] text-gray-500 font-bold uppercase tracking-wider mt-1">Price Range</p>
-                  <p className="text-sm font-bold text-gray-800 mt-1">{configurations.map(c => c.type).join(", ")} {property.type}</p>
+                  <p className="text-sm font-bold text-gray-800 mt-1">{configurations.map(c => c.type).join(", ")}</p>
                 </div>
                 {property.brochureUrl ? (
                   <a
@@ -232,7 +239,7 @@ export default function PropertyDetailsPage() {
               <div className="flex gap-2 mt-4">
                 {configurations.map((config, idx) => (
                   <div key={idx} className={`px-4 py-3 border rounded-lg cursor-pointer ${idx === 0 ? "border-[#0078DB] bg-[#F4F9FF]" : "border-gray-200"}`}>
-                    <p className="text-sm font-bold">{config.type} {property.type}</p>
+                    <p className="text-sm font-bold">{config.type}</p>
                     <p className="text-[10px] text-gray-500 mt-1">Carpet Area</p>
                     <p className="text-xs font-semibold">{config.carpetArea}</p>
                     <p className="text-sm font-bold mt-2">{config.startingPrice} <span className="text-[10px] text-[#0078DB] font-normal">+ Charges</span></p>
@@ -245,13 +252,12 @@ export default function PropertyDetailsPage() {
             <div className="pt-8">
               <div className="flex justify-between items-end mb-4">
                 <h2 className="text-xl font-extrabold text-gray-900">Floor Plans & Pricing</h2>
-                <a href="#" className="text-xs font-bold text-[#0078DB] hover:underline">View Homes in 3D</a>
               </div>
               
               <div className="flex gap-2 mb-6 overflow-x-auto pb-2 scrollbar-hide">
                 {configurations.map((config, idx) => (
                   <button key={idx} className={`shrink-0 px-4 py-1.5 rounded-full text-xs font-bold border ${idx === 0 ? "bg-[#F4F9FF] border-[#0078DB] text-[#0078DB]" : "border-gray-300 text-gray-600"}`}>
-                    {config.type} {property.type}
+                    {config.type}
                   </button>
                 ))}
               </div>
