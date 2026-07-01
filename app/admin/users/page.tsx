@@ -21,6 +21,15 @@ export default function AdminUsersPage() {
   const [error, setError] = useState("");
   const [search, setSearch] = useState("");
   const [expanded, setExpanded] = useState<string | null>(null);
+  const [toast, setToast] = useState<string | null>(null);
+
+  // Assign Property State
+  const [showAssignModal, setShowAssignModal] = useState(false);
+  const [assignUser, setAssignUser] = useState<User | null>(null);
+  const [properties, setProperties] = useState<{ _id: string; title: string; status: string }[]>([]);
+  const [assignData, setAssignData] = useState({ propertyId: "", interestedBHK: "", budget: "", message: "" });
+  const [assignLoading, setAssignLoading] = useState(false);
+  const [assignError, setAssignError] = useState("");
 
   // New User State
   const [showAddModal, setShowAddModal] = useState(false);
@@ -71,11 +80,70 @@ export default function AdminUsersPage() {
         // Automatically add to list
         setUsers(prev => [data.data, ...prev]);
         setTotal(prev => prev + 1);
+        setToast("User created successfully.");
+        setTimeout(() => setToast(null), 3000);
       }
     } catch (err) {
       setAddError("An error occurred while creating the user.");
     } finally {
       setAddLoading(false);
+    }
+  };
+
+  const fetchProperties = async () => {
+    try {
+      const res = await fetch(`${BASE}/properties?limit=100`, { headers: getHeaders() });
+      const data = await res.json();
+      setProperties(data.data || []);
+    } catch {
+      // ignore
+    }
+  };
+
+  const handleOpenAssign = (user: User) => {
+    setAssignUser(user);
+    setAssignData({ propertyId: "", interestedBHK: "", budget: "", message: "" });
+    setShowAssignModal(true);
+    if (properties.length === 0) fetchProperties();
+  };
+
+  const handleAssignUser = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setAssignLoading(true);
+    setAssignError("");
+    try {
+      const res = await fetch(`${BASE}/groups/admin-add-user`, {
+        method: "POST",
+        headers: getHeaders(),
+        body: JSON.stringify({ userId: assignUser?._id, ...assignData, budget: Number(assignData.budget) || undefined }),
+      });
+      const data = await res.json();
+      if (!data.success) {
+        setAssignError(data.message || "Failed to assign user.");
+      } else {
+        setShowAssignModal(false);
+        setToast("User successfully assigned to property group!");
+        setTimeout(() => setToast(null), 3000);
+        // Refresh the specific user's groups in the local state
+        const updatedUsers = users.map(u => {
+          if (u._id === assignUser?._id) {
+            const propTitle = properties.find(p => p._id === assignData.propertyId)?.title;
+            return { 
+              ...u, 
+              joinedGroups: [
+                ...u.joinedGroups, 
+                { _id: data.data._id, property: { title: propTitle }, status: "forming" }
+              ] 
+            };
+          }
+          return u;
+        });
+        setUsers(updatedUsers);
+      }
+    } catch (err) {
+      setAssignError("An error occurred.");
+    } finally {
+      setAssignLoading(false);
     }
   };
 
@@ -88,6 +156,11 @@ export default function AdminUsersPage() {
   return (
     <>
       <div className="space-y-6">
+      {toast && (
+        <div className="fixed top-6 right-6 z-50 bg-[#313131] text-white px-5 py-3 rounded-xl shadow-xl text-sm font-semibold">
+          ✓ {toast}
+        </div>
+      )}
       {/* Header */}
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
@@ -169,14 +242,22 @@ export default function AdminUsersPage() {
                       {new Date(user.createdAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
                     </td>
                     <td className="px-5 py-4">
-                      {(user.joinedGroups?.length || 0) > 0 && (
+                      <div className="flex gap-3 items-center">
+                        {(user.joinedGroups?.length || 0) > 0 && (
+                          <button
+                            onClick={() => setExpanded(expanded === user._id ? null : user._id)}
+                            className="text-xs font-bold text-[#FFA100] hover:underline whitespace-nowrap"
+                          >
+                            {expanded === user._id ? "Hide ▲" : "Groups ▼"}
+                          </button>
+                        )}
                         <button
-                          onClick={() => setExpanded(expanded === user._id ? null : user._id)}
-                          className="text-xs font-bold text-[#FFA100] hover:underline"
+                          onClick={() => handleOpenAssign(user)}
+                          className="px-2 py-1 text-[10px] font-bold rounded bg-[#313131] text-white hover:bg-[#FFA100] hover:text-[#313131] transition-colors whitespace-nowrap"
                         >
-                          {expanded === user._id ? "Hide ▲" : "Groups ▼"}
+                          + Assign
                         </button>
-                      )}
+                      </div>
                     </td>
                   </tr>
 
@@ -290,6 +371,90 @@ export default function AdminUsersPage() {
                   className="w-full py-3 bg-[#FFA100] hover:bg-[#FF8C00] text-white font-bold rounded-xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {addLoading ? "Creating..." : "Create User"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+      {/* Assign User Modal */}
+      {showAssignModal && assignUser && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-2xl p-6 w-full max-w-md shadow-xl border border-[#C7C0AE]/30 relative">
+            <button
+              onClick={() => setShowAssignModal(false)}
+              className="absolute top-4 right-4 text-[#313131]/40 hover:text-[#313131] transition-colors"
+            >
+              ✕
+            </button>
+            <h3 className="text-xl font-extrabold text-[#313131] mb-1 font-vietnam">Assign to Property</h3>
+            <p className="text-sm text-[#313131]/60 mb-5">Assigning <strong>{assignUser.name}</strong> to a group.</p>
+            
+            {assignError && (
+              <div className="mb-4 bg-red-50 text-red-600 text-sm font-semibold p-3 rounded-xl border border-red-200">
+                ⚠️ {assignError}
+              </div>
+            )}
+            
+            <form onSubmit={handleAssignUser} className="space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-[#313131]/60 uppercase tracking-wider mb-1.5">Property</label>
+                <select
+                  required
+                  value={assignData.propertyId}
+                  onChange={(e) => setAssignData({ ...assignData, propertyId: e.target.value })}
+                  className="w-full px-4 py-2.5 rounded-xl border border-[#C7C0AE]/50 text-sm focus:outline-none focus:border-[#FFA100] transition-colors bg-white"
+                >
+                  <option value="" disabled>Select a property...</option>
+                  {properties.map(p => (
+                    <option key={p._id} value={p._id} disabled={p.status !== "open"}>
+                      {p.title} {p.status !== "open" ? `(${p.status})` : ""}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-bold text-[#313131]/60 uppercase tracking-wider mb-1.5">BHK Interest</label>
+                  <input
+                    type="text"
+                    value={assignData.interestedBHK}
+                    onChange={(e) => setAssignData({ ...assignData, interestedBHK: e.target.value })}
+                    className="w-full px-4 py-2.5 rounded-xl border border-[#C7C0AE]/50 text-sm focus:outline-none focus:border-[#FFA100] transition-colors"
+                    placeholder="e.g. 2 BHK"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-[#313131]/60 uppercase tracking-wider mb-1.5">Budget (₹)</label>
+                  <input
+                    type="number"
+                    value={assignData.budget}
+                    onChange={(e) => setAssignData({ ...assignData, budget: e.target.value })}
+                    className="w-full px-4 py-2.5 rounded-xl border border-[#C7C0AE]/50 text-sm focus:outline-none focus:border-[#FFA100] transition-colors"
+                    placeholder="e.g. 7500000"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-[#313131]/60 uppercase tracking-wider mb-1.5">Message (Optional)</label>
+                <textarea
+                  value={assignData.message}
+                  onChange={(e) => setAssignData({ ...assignData, message: e.target.value })}
+                  className="w-full px-4 py-2.5 rounded-xl border border-[#C7C0AE]/50 text-sm focus:outline-none focus:border-[#FFA100] transition-colors resize-none"
+                  placeholder="Notes or messages..."
+                  rows={2}
+                />
+              </div>
+              
+              <div className="pt-2">
+                <button
+                  type="submit"
+                  disabled={assignLoading || !assignData.propertyId}
+                  className="w-full py-3 bg-[#FFA100] hover:bg-[#FF8C00] text-white font-bold rounded-xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {assignLoading ? "Assigning..." : "Assign User"}
                 </button>
               </div>
             </form>
