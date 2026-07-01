@@ -49,7 +49,7 @@ function PropertyCard({ property }: { property: any }) {
           <div>
             <p className="text-xs text-[#313131]/60 font-bold uppercase tracking-wider mb-1 font-vietnam">Group Price</p>
             <p className="text-2xl font-extrabold text-[#FFA100]">
-              ₹{(property.price / 100000).toFixed(2)}L
+              ₹{((property.price || 0) / 100000).toFixed(2)}L
             </p>
           </div>
           <Link

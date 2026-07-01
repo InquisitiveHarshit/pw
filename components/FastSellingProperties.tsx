@@ -40,13 +40,35 @@ export default function FastSellingProperties() {
         // Map to display properties
         const displayProps = storeProps.map(p => {
           const type = p.type || "Apartment";
-          const area = p.area || 0;
-          const bhkDetails = p.bhk ? `${p.bhk} BHK | ${area > 0 ? area + ' Sqft' : ''}` : type;
+          const areaRaw = p.area || "0";
+          const areaNum = typeof areaRaw === "string" ? parseFloat(areaRaw) : areaRaw;
+          const bhkDetails = p.bhk ? `${p.bhk} BHK | ${areaNum > 0 ? areaNum + ' Sqft' : ''}` : type;
 
-          const basePriceStr = p.price ? `₹${(p.price / 10000000).toFixed(2)} Cr` : "₹0";
+          let minPrice = Infinity;
+          let minDiscountPrice = Infinity;
+
+          if (p.units && p.units.length > 0) {
+            p.units.forEach(unit => {
+              const priceVal = parseFloat(unit.price);
+              if (!isNaN(priceVal) && priceVal < minPrice) {
+                minPrice = priceVal;
+                const discountVal = parseFloat(unit.discountPrice);
+                minDiscountPrice = !isNaN(discountVal) ? discountVal : priceVal;
+              }
+            });
+          }
+
+          if (minPrice === Infinity) {
+            minPrice = (p as any).price ? parseFloat((p as any).price) : 0;
+            minDiscountPrice = minPrice;
+          }
+
+          const formatCurrency = (val: number) => `₹${(val / 10000000).toFixed(2)} Cr`;
           
-          const developerPrice = basePriceStr;
-          const groupPrice = basePriceStr;
+          const developerPrice = formatCurrency(minPrice);
+          const groupPrice = formatCurrency(minDiscountPrice);
+          const discountAmt = minPrice - minDiscountPrice;
+          const discountPct = discountAmt > 0 ? `Save ${formatCurrency(discountAmt)}` : "Group Buy Deal";
           
           const filled = p.filledSlots || 0;
           const avatars = ["Santosh", "Tushar", "Nikhlesh", "Vivek", "Arpit", "Bharat"].slice(0, filled);
@@ -59,8 +81,8 @@ export default function FastSellingProperties() {
             sector: p.sector || "",
             bhkDetails,
             developerPrice,
-            groupPrice: developerPrice, 
-            discountPct: "Group Buy Deal",
+            groupPrice, 
+            discountPct,
             buyersJoinedText: filled > 0 ? `▲ ${filled} joined recently` : "Be the first to join!",
             subAlertText: filled > 0 ? `${filled} families are purchasing!` : "Start group buying in this project.",
             ctaMemberText: `You? Become ${filled + 1}th member`,

@@ -171,9 +171,15 @@ export default function PropertyDetailsPage() {
                   🔥 {property.promotionalTag}
                 </span>
               )}
-              <span className="px-3 py-1 bg-teal-500 text-white text-[10px] font-bold uppercase rounded flex items-center gap-1">
-                ✓ RERA
-              </span>
+              {property.reraNumber ? (
+                <span className="px-3 py-1 bg-teal-500 text-white text-[10px] font-bold uppercase rounded flex items-center gap-1">
+                  ✓ RERA: {property.reraNumber}
+                </span>
+              ) : (
+                <span className="px-3 py-1 bg-teal-500 text-white text-[10px] font-bold uppercase rounded flex items-center gap-1">
+                  ✓ RERA
+                </span>
+              )}
               <span className="px-3 py-1 bg-green-50 text-green-700 border border-green-200 text-[10px] font-bold rounded">
                 No Brokerage
               </span>

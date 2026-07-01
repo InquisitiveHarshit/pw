@@ -149,6 +149,7 @@ export default function PropertyForm({ initial, mode }: FormProps) {
   );
   const [locationHighlights, setLocationHighlights] = useState(initial?.locationHighlights ?? "");
   const [promotionalTag, setPromotionalTag] = useState(initial?.promotionalTag ?? "");
+  const [reraNumber, setReraNumber] = useState(initial?.reraNumber ?? "");
 
   const brochureInputRef = useRef<HTMLInputElement>(null);
   const readFileAsDataUrl = (file: File): Promise<string> =>
@@ -228,6 +229,7 @@ export default function PropertyForm({ initial, mode }: FormProps) {
       possessionDate: possessionDate,
       locationHighlights: locationHighlights.trim(),
       promotionalTag: promotionalTag.trim(),
+      reraNumber: reraNumber.trim(),
       brochureUrl: brochureUrl.trim(),
     };
 
@@ -345,9 +347,14 @@ export default function PropertyForm({ initial, mode }: FormProps) {
           </Field>
         </div>
 
-        <Field label="Location Highlights" hint="Pipe (|) separated list of highlights. e.g. Near Mall | 5 mins from Metro">
-          <input className={inputCls} value={locationHighlights} onChange={(e) => setLocationHighlights(e.target.value)} placeholder="Near Mall | 5 mins from Metro" />
-        </Field>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+          <Field label="RERA Number" hint="Official RERA Registration ID">
+            <input className={inputCls} value={reraNumber} onChange={(e) => setReraNumber(e.target.value)} placeholder="e.g. PRM/KA/RERA/1251/446/PR/123456" />
+          </Field>
+          <Field label="Location Highlights" hint="Pipe (|) separated list of highlights. e.g. Near Mall | 5 mins from Metro">
+            <input className={inputCls} value={locationHighlights} onChange={(e) => setLocationHighlights(e.target.value)} placeholder="Near Mall | 5 mins from Metro" />
+          </Field>
+        </div>
       </Section>
 
       {/* Group Buying Settings */}

@@ -25,7 +25,12 @@ export type Property = {
   possessionDate?: string;
   locationHighlights?: string;
   promotionalTag?: string;
+  reraNumber?: string;
   brochureUrl?: string;
+  price?: number;
+  bhk?: string;
+  area?: string;
+  type?: string;
   createdAt: string;
 };
 
