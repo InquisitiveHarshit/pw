@@ -11,6 +11,9 @@ export default function AdminLocalitiesPage() {
 
   // Form states
   const [name, setName] = useState("");
+  const [city, setCity] = useState("");
+  const [state, setState] = useState("");
+  const [pincode, setPincode] = useState("");
   const [activeProjects, setActiveProjects] = useState("");
   const [activeGroups, setActiveGroups] = useState("");
 
@@ -41,11 +44,17 @@ export default function AdminLocalitiesPage() {
     try {
       const res = await createLocality({
         name: name.trim(),
+        city: city.trim(),
+        state: state.trim(),
+        pincode: pincode.trim(),
         activeProjects: activeProjects ? Number(activeProjects) : 0,
         activeGroups: activeGroups ? Number(activeGroups) : 0,
       });
       if (res.success) {
         setName("");
+        setCity("");
+        setState("");
+        setPincode("");
         setActiveProjects("");
         setActiveGroups("");
         fetchLocalities();
@@ -93,6 +102,36 @@ export default function AdminLocalitiesPage() {
             />
           </div>
           <div className="space-y-1">
+            <label className="text-xs font-black text-[#313131]/70 uppercase tracking-wider">City</label>
+            <input
+              type="text"
+              value={city}
+              onChange={(e) => setCity(e.target.value)}
+              placeholder="e.g. Gurugram"
+              className="w-full px-4 py-2.5 bg-[#FAF1E6]/40 border border-[#C7C0AE]/40 rounded-xl text-sm text-[#313131] placeholder-[#313131]/30 focus:outline-none focus:border-[#FFA100] transition-colors"
+            />
+          </div>
+          <div className="space-y-1">
+            <label className="text-xs font-black text-[#313131]/70 uppercase tracking-wider">State</label>
+            <input
+              type="text"
+              value={state}
+              onChange={(e) => setState(e.target.value)}
+              placeholder="e.g. Haryana"
+              className="w-full px-4 py-2.5 bg-[#FAF1E6]/40 border border-[#C7C0AE]/40 rounded-xl text-sm text-[#313131] placeholder-[#313131]/30 focus:outline-none focus:border-[#FFA100] transition-colors"
+            />
+          </div>
+          <div className="space-y-1">
+            <label className="text-xs font-black text-[#313131]/70 uppercase tracking-wider">Pincode</label>
+            <input
+              type="text"
+              value={pincode}
+              onChange={(e) => setPincode(e.target.value)}
+              placeholder="e.g. 122011"
+              className="w-full px-4 py-2.5 bg-[#FAF1E6]/40 border border-[#C7C0AE]/40 rounded-xl text-sm text-[#313131] placeholder-[#313131]/30 focus:outline-none focus:border-[#FFA100] transition-colors"
+            />
+          </div>
+          <div className="space-y-1">
             <label className="text-xs font-black text-[#313131]/70 uppercase tracking-wider">Active Projects</label>
             <input
               type="number"
@@ -135,6 +174,7 @@ export default function AdminLocalitiesPage() {
               <thead>
                 <tr className="bg-[#FAF1E6]/60 border-b border-[#C7C0AE]/20">
                   <th className="px-6 py-4 text-xs font-black text-[#313131]/70 uppercase tracking-wider">Name</th>
+                  <th className="px-6 py-4 text-xs font-black text-[#313131]/70 uppercase tracking-wider">City/State/Pin</th>
                   <th className="px-6 py-4 text-xs font-black text-[#313131]/70 uppercase tracking-wider">Active Projects</th>
                   <th className="px-6 py-4 text-xs font-black text-[#313131]/70 uppercase tracking-wider">Active Groups</th>
                   <th className="px-6 py-4 text-xs font-black text-[#313131]/70 uppercase tracking-wider text-right">Actions</th>
@@ -144,6 +184,11 @@ export default function AdminLocalitiesPage() {
                 {localities.map((loc) => (
                   <tr key={loc._id} className="border-b border-[#C7C0AE]/10 hover:bg-[#FAF1E6]/20 transition-colors">
                     <td className="px-6 py-4 font-semibold text-[#313131]">{loc.name}</td>
+                    <td className="px-6 py-4 text-sm text-[#313131]/70">
+                      {loc.city && <span>{loc.city}, </span>}
+                      {loc.state && <span>{loc.state} </span>}
+                      {loc.pincode && <span>{loc.pincode}</span>}
+                    </td>
                     <td className="px-6 py-4 text-sm text-[#313131]/70">{loc.activeProjects}</td>
                     <td className="px-6 py-4 text-sm text-[#313131]/70">{loc.activeGroups}</td>
                     <td className="px-6 py-4 text-right">

@@ -114,12 +114,18 @@ export default function PropertyForm({ initial, mode }: FormProps) {
   const [toast, setToast] = useState<{ msg: string; type: "success" | "error" } | null>(null);
 
   const [localities, setLocalities] = useState<Locality[]>([]);
+  const [searchQuery, setSearchQuery] = useState(initial?.location ?? "");
+  const [showDropdown, setShowDropdown] = useState(false);
 
   useEffect(() => {
-    getLocalities().then((res) => {
-      if (res.success) setLocalities(res.data);
-    });
-  }, []);
+    const delayDebounceFn = setTimeout(() => {
+      getLocalities(searchQuery).then((res) => {
+        if (res.success) setLocalities(res.data);
+      });
+    }, 300);
+
+    return () => clearTimeout(delayDebounceFn);
+  }, [searchQuery]);
 
   // Form State
   const [title, setTitle] = useState(initial?.title ?? "");
@@ -267,12 +273,41 @@ export default function PropertyForm({ initial, mode }: FormProps) {
         
         <div className="grid grid-cols-1 gap-5">
           <Field label="Location" required>
-            <select className={selectCls} value={location} onChange={(e) => setLocation(e.target.value)}>
-              <option value="">Select a Locality...</option>
-              {localities.map((loc) => (
-                <option key={loc._id} value={loc.name}>{loc.name}</option>
-              ))}
-            </select>
+            <div className="relative">
+              <input
+                className={inputCls}
+                value={searchQuery}
+                onChange={(e) => {
+                  setSearchQuery(e.target.value);
+                  setShowDropdown(true);
+                  if (e.target.value === "") setLocation("");
+                }}
+                onFocus={() => {
+                  if (location && !searchQuery) setSearchQuery(location);
+                  setShowDropdown(true);
+                }}
+                onBlur={() => setTimeout(() => setShowDropdown(false), 200)}
+                placeholder="Search for a locality..."
+              />
+              {showDropdown && localities.length > 0 && (
+                <ul className="absolute z-10 w-full bg-white border border-[#C7C0AE]/50 mt-1 max-h-60 overflow-y-auto rounded-xl shadow-lg">
+                  {localities.map((loc) => (
+                    <li
+                      key={loc._id}
+                      className="px-4 py-2 hover:bg-[#FAF1E6] cursor-pointer text-sm text-[#313131]"
+                      onMouseDown={(e) => {
+                        e.preventDefault(); // Prevents blur
+                        setLocation(loc.name);
+                        setSearchQuery(loc.name);
+                        setShowDropdown(false);
+                      }}
+                    >
+                      {loc.name} {loc.state ? `(${loc.state})` : ''}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
           </Field>
         </div>
 
