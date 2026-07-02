@@ -3,6 +3,17 @@ import * as motion from "motion/react-client";
 
 // Reusable animated property card
 function PropertyCard({ property }: { property: any }) {
+  let mainPrice = property.price ? `₹${(property.price / 100000).toFixed(2)}L` : "Price on Request";
+  let cutPrice = property.price ? `₹${(property.price * 1.1 / 100000).toFixed(2)}L` : null;
+
+  if (property.units && property.units.length > 0) {
+    const unit = property.units[0];
+    if (unit.price) {
+      cutPrice = unit.price;
+      mainPrice = unit.discountPrice || unit.price;
+    }
+  }
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
@@ -47,10 +58,17 @@ function PropertyCard({ property }: { property: any }) {
         
         <div className="flex items-center justify-between border-t border-[#C7C0AE]/30 pt-4">
           <div>
-            <p className="text-xs text-[#313131]/60 font-bold uppercase tracking-wider mb-1 font-vietnam">Group Price</p>
-            <p className="text-2xl font-extrabold text-[#FFA100]">
-              ₹{((property.price || 0) / 100000).toFixed(2)}L
-            </p>
+            <p className="text-xs text-[#313131]/60 font-bold uppercase tracking-wider mb-1 font-vietnam">Minimum Cost</p>
+            <div className="flex flex-col">
+              {cutPrice && cutPrice !== mainPrice && (
+                <span className="text-sm font-medium text-gray-400 line-through">
+                  {cutPrice}
+                </span>
+              )}
+              <span className="text-2xl font-extrabold text-[#FFA100]">
+                {mainPrice}
+              </span>
+            </div>
           </div>
           <Link
             href={`/properties/${property._id}`}

@@ -66,16 +66,25 @@ export default function PropertyDetailsPage() {
   
   // Create a configuration array from the backend property units
   const configurations = property.units?.length > 0 
-    ? property.units.map(unit => ({
-        type: unit.bhk ? `${unit.bhk}` : unit.propertyType || "Layout",
-        carpetArea: unit.area ? `${unit.area}` : "TBD",
-        startingPrice: unit.price || "Price on Request",
-      }))
+    ? property.units.map(unit => {
+        let disc = unit.discountPrice;
+        if (!disc && unit.price && unit.price !== "Price on Request") {
+          const num = Number(unit.price.replace(/[^0-9.]/g, ''));
+          if (num) disc = unit.price.replace(num.toString(), (num * 0.9).toString()); // Simple approx formatting
+        }
+        return {
+          type: unit.bhk ? `${unit.bhk}` : unit.propertyType || "Layout",
+          carpetArea: unit.area ? `${unit.area}` : "TBD",
+          startingPrice: unit.price || "Price on Request",
+          discountPrice: disc || unit.price || "Price on Request",
+        };
+      })
     : [
         {
           type: (property as any).bhk ? `${(property as any).bhk} BHK` : "Layout",
           carpetArea: (property as any).area ? `${(property as any).area} sqft` : "TBD",
           startingPrice: priceFormatted,
+          discountPrice: priceFormatted,
         }
       ];
 
@@ -156,7 +165,10 @@ export default function PropertyDetailsPage() {
                       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"></path></svg>
                     </button>
                   </h1>
-                  <p className="text-sm text-gray-600 mt-1">{sector}, {city}</p>
+                  <p className="text-sm text-gray-600 mt-1">
+                    {sector}, {city}
+                    {property.reraNumber && <span className="ml-2 font-bold text-teal-600">✓ RERA: {property.reraNumber}</span>}
+                  </p>
                 </div>
               </div>
               <button className="w-full sm:w-auto px-6 py-2.5 bg-[#0078DB] hover:bg-[#0060B0] text-white font-bold rounded text-sm transition-colors shadow-sm">
@@ -248,7 +260,22 @@ export default function PropertyDetailsPage() {
                     <p className="text-sm font-bold">{config.type}</p>
                     <p className="text-[10px] text-gray-500 mt-1">Carpet Area</p>
                     <p className="text-xs font-semibold">{config.carpetArea}</p>
-                    <p className="text-sm font-bold mt-2">{config.startingPrice} <span className="text-[10px] text-[#0078DB] font-normal">+ Charges</span></p>
+                    <div className="mt-2">
+                      {config.startingPrice !== config.discountPrice ? (
+                        <>
+                          <p className="text-[10px] font-medium text-gray-400 line-through">
+                            {config.startingPrice} <span className="font-normal">+ Charges</span>
+                          </p>
+                          <p className="text-sm font-bold text-[#FFA100]">
+                            {config.discountPrice} <span className="text-[10px] font-normal text-[#0078DB]">+ Charges</span>
+                          </p>
+                        </>
+                      ) : (
+                        <p className="text-sm font-bold text-[#FFA100]">
+                          {config.startingPrice} <span className="text-[10px] font-normal text-[#0078DB]">+ Charges</span>
+                        </p>
+                      )}
+                    </div>
                   </div>
                 ))}
               </div>
@@ -284,7 +311,14 @@ export default function PropertyDetailsPage() {
                         <img src="/floorplan_mock.webp" alt="Floorplan" className="max-h-full object-contain opacity-80 mix-blend-multiply" onError={(e) => { (e.target as HTMLImageElement).src = "/property_apartment.png"; }} />
                       </div>
                       
-                      <div className="font-extrabold text-base">{config.startingPrice}</div>
+                      {config.startingPrice !== config.discountPrice ? (
+                        <div className="flex flex-col">
+                          <span className="text-xs text-gray-400 line-through">{config.startingPrice}</span>
+                          <span className="font-extrabold text-base text-[#FFA100]">{config.discountPrice}</span>
+                        </div>
+                      ) : (
+                        <div className="font-extrabold text-base">{config.startingPrice}</div>
+                      )}
                       
                       <div className="mt-3 bg-gray-50 p-2 rounded text-[10px] text-gray-600">
                         <p>{statusStr}</p>
@@ -300,46 +334,7 @@ export default function PropertyDetailsPage() {
               </div>
             </div>
 
-            {/* Sellers */}
-            <div className="pt-8">
-              <div className="flex justify-between items-end mb-4">
-                <h2 className="text-xl font-extrabold text-gray-900">Sellers you may contact for more details</h2>
-                <a href="#" className="text-xs font-bold text-[#0078DB] hover:underline">View All Sellers</a>
-              </div>
-              
-              <div className="w-64 bg-gray-900 rounded-xl overflow-hidden relative shadow-lg">
-                <div className="absolute top-2 left-2 bg-[#FFA100] text-black text-[10px] font-bold px-2 py-0.5 rounded flex items-center gap-1 z-10">
-                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path></svg>
-                  Property Advisor
-                </div>
-                
-                <div className="h-32 bg-black/40 relative">
-                  <img src={heroImage} className="w-full h-full object-cover opacity-50" alt="Background" onError={(e) => { (e.target as HTMLImageElement).src = "/property_condo.png"; }} />
-                  <div className="absolute inset-0 flex flex-col justify-center items-center text-center p-4">
-                     <p className="text-yellow-400 text-[10px] font-bold mb-1">Our Expertise</p>
-                     <p className="text-white font-bold text-sm leading-tight">{locationHighlights.split("|")[0]}</p>
-                     <div className="w-8 h-8 rounded-full bg-black/50 border border-white/20 flex items-center justify-center mt-3">
-                       <span className="text-white text-xs">▶</span>
-                     </div>
-                  </div>
-                </div>
-                
-                <div className="bg-[#1A2642] p-4 text-white">
-                  <div className="flex items-center gap-3 mb-4">
-                    <div className="w-10 h-10 rounded-full bg-gray-700 overflow-hidden border border-gray-600">
-                      <img src="https://i.pravatar.cc/150?u=a042581f4e29026704d" alt="Broker" className="w-full h-full object-cover" />
-                    </div>
-                    <div>
-                      <p className="font-bold text-sm">{developerName.toUpperCase()}</p>
-                      <p className="text-[10px] text-gray-400">Verified Partner</p>
-                    </div>
-                  </div>
-                  <button className="w-full bg-white text-[#1A2642] hover:bg-gray-100 font-bold text-sm py-2 rounded transition-colors">
-                    View Number
-                  </button>
-                </div>
-              </div>
-            </div>
+
 
             {/* Top Facilities */}
             <div className="pt-8">
@@ -364,9 +359,6 @@ export default function PropertyDetailsPage() {
                   </div>
                 ))}
               </div>
-              <button className="mt-4 text-xs font-bold text-gray-900 border-b-2 border-gray-900 pb-0.5 hover:text-[#0078DB] hover:border-[#0078DB] transition-colors">
-                View Facility Photos →
-              </button>
             </div>
 
             {/* Location Advantages */}
@@ -397,11 +389,31 @@ export default function PropertyDetailsPage() {
               <h2 className="text-xl font-extrabold text-gray-900 mb-4">More about {projectName}</h2>
               <div className="text-sm text-gray-600 leading-relaxed space-y-4">
                 <p>{description}</p>
-                <p>{aboutDeveloper}</p>
               </div>
               <button className="mt-2 text-xs font-bold text-[#0078DB] hover:underline">
                 Read more
               </button>
+            </div>
+
+            {/* Developer Details */}
+            <div className="pt-4 pb-12">
+              <div className="bg-white border border-[#C7C0AE]/40 rounded-2xl p-6 text-[#313131] shadow-md relative overflow-hidden">
+                <div className="absolute top-0 right-0 w-32 h-32 bg-[#FAF1E6] rounded-full blur-2xl -mr-10 -mt-10"></div>
+                <div className="absolute bottom-0 left-0 w-24 h-24 bg-[#FFA100]/10 rounded-full blur-xl -ml-8 -mb-8"></div>
+                <div className="relative z-10 flex flex-col sm:flex-row gap-6 items-center sm:items-start">
+                  <div className="w-20 h-20 rounded-full bg-[#FAF1E6] border-2 border-[#C7C0AE]/30 flex items-center justify-center shrink-0">
+                    <span className="text-3xl font-extrabold text-[#FFA100]">{developerName[0]?.toUpperCase()}</span>
+                  </div>
+                  <div className="text-center sm:text-left flex-1">
+                    <p className="text-[10px] text-[#313131]/50 font-bold uppercase tracking-wider mb-1">Developed By</p>
+                    <h3 className="text-xl font-extrabold text-[#313131] mb-2">{developerName}</h3>
+                    <p className="text-sm text-[#313131]/70 leading-relaxed max-w-2xl">{aboutDeveloper}</p>
+                  </div>
+                  <button className="w-full sm:w-auto px-6 py-2.5 bg-[#313131] hover:bg-[#FFA100] hover:text-[#313131] text-white font-bold rounded-xl transition-all shadow-sm mt-4 sm:mt-0 whitespace-nowrap font-vietnam">
+                    Contact Developer
+                  </button>
+                </div>
+              </div>
             </div>
 
           </div>

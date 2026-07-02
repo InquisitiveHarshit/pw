@@ -8,6 +8,29 @@ import {
   type Property,
 } from "@/lib/api/properties";
 import { getLocalities, type Locality } from "@/lib/api/localities";
+import { getCloudinarySignature } from "@/lib/cloudinary";
+
+async function uploadToCloudinary(file: File): Promise<string> {
+  const { timestamp, signature, apiKey, cloudName } = await getCloudinarySignature();
+  
+  const formData = new FormData();
+  formData.append("file", file);
+  formData.append("api_key", apiKey);
+  formData.append("timestamp", timestamp.toString());
+  formData.append("signature", signature);
+
+  const res = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/auto/upload`, {
+    method: "POST",
+    body: formData,
+  });
+  
+  if (!res.ok) {
+    throw new Error("Failed to upload file");
+  }
+  
+  const data = await res.json();
+  return data.secure_url;
+}
 
 type FormProps = {
   initial?: Property;
@@ -53,21 +76,22 @@ const textareaCls = `${inputCls} resize-none`;
 // Reusable image upload slot component
 function ImageSlot({ label, hint, value, onChange }: { label: string; hint: string; value: string; onChange: (val: string) => void }) {
   const inputRef = useRef<HTMLInputElement>(null);
-  const readFile = (file: File): Promise<string> =>
-    new Promise((resolve) => {
-      const reader = new FileReader();
-      reader.onload = () => resolve(reader.result as string);
-      reader.readAsDataURL(file);
-    });
+  const [uploading, setUploading] = useState(false);
+
   return (
     <div className="space-y-2">
       <p className="text-xs font-black text-[#313131]/70 uppercase tracking-wider">{label}</p>
       <p className="text-[11px] text-[#313131]/40">{hint}</p>
       <div
-        onClick={() => inputRef.current?.click()}
+        onClick={() => !uploading && inputRef.current?.click()}
         className="w-full h-36 rounded-xl border-2 border-dashed border-[#C7C0AE]/50 overflow-hidden bg-[#FAF1E6]/50 cursor-pointer hover:border-[#FFA100] hover:bg-[#FAF1E6] transition-all flex items-center justify-center relative group"
       >
-        {value ? (
+        {uploading ? (
+          <div className="flex flex-col items-center justify-center gap-2">
+            <div className="w-6 h-6 border-2 border-[#FFA100] border-t-transparent rounded-full animate-spin"></div>
+            <span className="text-xs font-bold text-[#313131]/60">Uploading...</span>
+          </div>
+        ) : value ? (
           <>
             <img src={value} alt="Preview" className="w-full h-full object-cover" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
             <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center gap-1">
@@ -90,7 +114,17 @@ function ImageSlot({ label, hint, value, onChange }: { label: string; hint: stri
         className="hidden"
         onChange={async (e) => {
           const file = e.target.files?.[0];
-          if (file) onChange(await readFile(file));
+          if (file) {
+            setUploading(true);
+            try {
+              const url = await uploadToCloudinary(file);
+              onChange(url);
+            } catch (err) {
+              alert("Failed to upload image");
+            } finally {
+              setUploading(false);
+            }
+          }
         }}
       />
       <input
@@ -145,6 +179,7 @@ export default function PropertyForm({ initial, mode }: FormProps) {
   const [image2, setImage2] = useState(initial?.images?.[1] ?? "");
   const [image3, setImage3] = useState(initial?.images?.[2] ?? "");
   const [brochureUrl, setBrochureUrl] = useState(initial?.brochureUrl ?? "");
+  const [uploadingBrochure, setUploadingBrochure] = useState(false);
   
   // Additional Configurable Fields
   const [developerName, setDeveloperName] = useState(initial?.developerName ?? "");
@@ -158,12 +193,6 @@ export default function PropertyForm({ initial, mode }: FormProps) {
   const [reraNumber, setReraNumber] = useState(initial?.reraNumber ?? "");
 
   const brochureInputRef = useRef<HTMLInputElement>(null);
-  const readFileAsDataUrl = (file: File): Promise<string> =>
-    new Promise((resolve) => {
-      const reader = new FileReader();
-      reader.onload = () => resolve(reader.result as string);
-      reader.readAsDataURL(file);
-    });
 
   const addUnit = () => {
     setUnits([...units, { propertyType: "", bhk: "", area: "", price: "", discountPrice: "" }]);
@@ -434,12 +463,16 @@ export default function PropertyForm({ initial, mode }: FormProps) {
           <p className="text-[11px] text-[#313131]/40 mb-3">Upload a PDF file or paste a URL. This will power the "Download Brochure" button on the property page.</p>
           <div className="flex items-center gap-4">
             <div
-              onClick={() => brochureInputRef.current?.click()}
+              onClick={() => !uploadingBrochure && brochureInputRef.current?.click()}
               className="flex items-center gap-3 px-5 py-3 bg-[#FAF1E6]/60 border-2 border-dashed border-[#C7C0AE]/50 rounded-xl cursor-pointer hover:border-[#FFA100] hover:bg-[#FAF1E6] transition-all shrink-0"
             >
-              <span className="text-2xl">📄</span>
+              {uploadingBrochure ? (
+                <div className="w-6 h-6 border-2 border-[#FFA100] border-t-transparent rounded-full animate-spin"></div>
+              ) : (
+                <span className="text-2xl">📄</span>
+              )}
               <div>
-                <p className="text-xs font-bold text-[#313131]">Upload PDF</p>
+                <p className="text-xs font-bold text-[#313131]">{uploadingBrochure ? "Uploading..." : "Upload PDF"}</p>
                 <p className="text-[10px] text-[#313131]/50">
                   {brochureUrl ? (
                     <span className="text-emerald-600 font-semibold">✓ File selected</span>
@@ -454,7 +487,17 @@ export default function PropertyForm({ initial, mode }: FormProps) {
               className="hidden"
               onChange={async (e) => {
                 const file = e.target.files?.[0];
-                if (file) setBrochureUrl(await readFileAsDataUrl(file));
+                if (file) {
+                  setUploadingBrochure(true);
+                  try {
+                    const url = await uploadToCloudinary(file);
+                    setBrochureUrl(url);
+                  } catch (err) {
+                    alert("Failed to upload PDF");
+                  } finally {
+                    setUploadingBrochure(false);
+                  }
+                }
               }}
             />
             <div className="flex-1">
