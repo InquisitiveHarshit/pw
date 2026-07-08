@@ -44,31 +44,52 @@ export default function FastSellingProperties() {
           const areaNum = typeof areaRaw === "string" ? parseFloat(areaRaw) : areaRaw;
           const bhkDetails = p.bhk ? `${p.bhk} BHK | ${areaNum > 0 ? areaNum + ' Sqft' : ''}` : type;
 
+          const toNum = (s: any) => {
+            if (!s) return Infinity;
+            if (typeof s === "number") return s;
+            const match = String(s).replace(/[₹,\s]/g, '').match(/([\d.]+)\s*(?:Cr|L|K)?/i);
+            if (!match) return Infinity;
+            const n = parseFloat(match[1]);
+            const u = String(s).toLowerCase();
+            if (u.includes('cr')) return n * 1e7;
+            if (u.includes('l')) return n * 1e5;
+            if (u.includes('k')) return n * 1e3;
+            return n;
+          };
+        
+          const formatCurrency = (val: number) => {
+            if (val === Infinity || isNaN(val) || val === 0) return "Price on Request";
+            if (val >= 1e7) return `₹${(val / 1e7).toFixed(2).replace(/\.00$/, '')} Cr`;
+            if (val >= 1e5) return `₹${(val / 1e5).toFixed(2).replace(/\.00$/, '')} L`;
+            if (val >= 1e3) return `₹${(val / 1e3).toFixed(2).replace(/\.00$/, '')} K`;
+            return `₹${val}`;
+          };
+
           let minPrice = Infinity;
           let minDiscountPrice = Infinity;
 
           if (p.units && p.units.length > 0) {
             p.units.forEach(unit => {
-              const priceVal = parseFloat(unit.price);
-              if (!isNaN(priceVal) && priceVal < minPrice) {
+              const priceVal = toNum(unit.price);
+              if (priceVal < minPrice) {
                 minPrice = priceVal;
-                const discountVal = parseFloat(unit.discountPrice);
-                minDiscountPrice = !isNaN(discountVal) ? discountVal : priceVal;
+                const discountVal = toNum(unit.discountPrice);
+                minDiscountPrice = discountVal !== Infinity ? discountVal : priceVal;
               }
             });
           }
 
           if (minPrice === Infinity) {
-            minPrice = (p as any).price ? parseFloat((p as any).price) : 0;
+            minPrice = toNum((p as any).price);
             minDiscountPrice = minPrice;
           }
 
-          const formatCurrency = (val: number) => `₹${(val / 10000000).toFixed(2)} Cr`;
-          
           const developerPrice = formatCurrency(minPrice);
           const groupPrice = formatCurrency(minDiscountPrice);
           const discountAmt = minPrice - minDiscountPrice;
-          const discountPct = discountAmt > 0 ? `Save ${formatCurrency(discountAmt)}` : "Group Buy Deal";
+          const discountPct = discountAmt > 0 && minPrice !== Infinity
+            ? `Save ${Math.round((discountAmt / minPrice) * 100)}%`
+            : "Group Buy Deal";
           
           const filled = p.filledSlots || 0;
           const avatars = ["Santosh", "Tushar", "Nikhlesh", "Vivek", "Arpit", "Bharat"].slice(0, filled);
