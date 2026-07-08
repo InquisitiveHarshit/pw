@@ -5,13 +5,14 @@ import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
 const navItems = [
-  { label: "Dashboard",   href: "/admin",          icon: "⊞" },
-  { label: "Properties",  href: "/admin/properties", icon: "🏠" },
-  { label: "Add Property",href: "/admin/properties/new", icon: "+" },
-  { label: "Localities",  href: "/admin/localities",    icon: "📍" },
-  { label: "Groups",      href: "/admin/groups",    icon: "👥" },
-  { label: "Blogs",       href: "/admin/blogs",     icon: "📝" },
-  { label: "Users",       href: "/admin/users",     icon: "👤" },
+  { label: "Dashboard",         href: "/admin",                  icon: "⊞" },
+  { label: "Properties",        href: "/admin/properties",       icon: "🏠" },
+  { label: "Add Property",      href: "/admin/properties/new",   icon: "+" },
+  { label: "Localities",        href: "/admin/localities",       icon: "📍" },
+  { label: "Locality Content",  href: "/admin/locality-content", icon: "🖼️" },
+  { label: "Groups",            href: "/admin/groups",           icon: "👥" },
+  { label: "Blogs",             href: "/admin/blogs",            icon: "📝" },
+  { label: "Users",             href: "/admin/users",            icon: "👤" },
 ];
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {

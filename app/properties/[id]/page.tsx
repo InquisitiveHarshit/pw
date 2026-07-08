@@ -425,8 +425,55 @@ export default function PropertyDetailsPage() {
                 <p>{description}</p>
                 <p>{aboutDeveloper}</p>
               </div>
-              
             </div>
+
+            {/* Amenities */}
+            {amenities.length > 0 && (
+              <div className="pt-8 pb-4">
+                <h2 className="text-xl font-extrabold text-gray-900 mb-5">Amenities</h2>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                  {amenities.map((amenity, idx) => (
+                    <div
+                      key={idx}
+                      className="flex items-center gap-3 bg-white border border-gray-200 rounded-xl px-4 py-3 shadow-sm group"
+                    >
+                      {/* Animated arrow */}
+                      <svg
+                        width="18"
+                        height="18"
+                        viewBox="0 0 18 18"
+                        fill="none"
+                        xmlns="http://www.w3.org/2000/svg"
+                        className="flex-shrink-0 text-[#FFA100]"
+                        style={{
+                          animation: `arrowBounce 1.4s ease-in-out infinite`,
+                          animationDelay: `${(idx * 0.15) % 1.4}s`,
+                        }}
+                      >
+                        <path
+                          d="M3 9h12M10 4l5 5-5 5"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        />
+                      </svg>
+                      <span className="text-sm font-semibold text-gray-800 leading-tight">
+                        {amenity}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Keyframe injected inline — tiny, no extra CSS file needed */}
+                <style>{`
+                  @keyframes arrowBounce {
+                    0%, 100% { transform: translateX(0); }
+                    50% { transform: translateX(5px); }
+                  }
+                `}</style>
+              </div>
+            )}
 
           </div>
 
