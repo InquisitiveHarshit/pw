@@ -171,6 +171,22 @@ export default function PropertyForm({ initial, mode }: FormProps) {
   const [amenities, setAmenities] = useState<string[]>(initial?.amenities ?? []);
   const [newAmenity, setNewAmenity] = useState("");
 
+  // BHK Categories — admin defines available options; units pick from these
+  const [bhkCategories, setBhkCategories] = useState<string[]>(initial?.bhkCategories ?? []);
+  const [newBhkCategory, setNewBhkCategory] = useState("");
+
+  const addBhkCategory = () => {
+    const val = newBhkCategory.trim();
+    if (val && !bhkCategories.includes(val)) {
+      setBhkCategories([...bhkCategories, val]);
+      setNewBhkCategory("");
+    }
+  };
+
+  const removeBhkCategory = (index: number) => {
+    setBhkCategories(bhkCategories.filter((_, i) => i !== index));
+  };
+
   const [totalSlots, setTotalSlots] = useState(initial?.totalSlots?.toString() ?? "10");
   const [filledSlots, setFilledSlots] = useState(initial?.filledSlots?.toString() ?? "0");
   const [status, setStatus] = useState(initial?.status ?? "open");
@@ -195,7 +211,7 @@ export default function PropertyForm({ initial, mode }: FormProps) {
   const brochureInputRef = useRef<HTMLInputElement>(null);
 
   const addUnit = () => {
-    setUnits([...units, { propertyType: "", bhk: "", area: "", price: "", discountPrice: "" }]);
+    setUnits([...units, { propertyType: "", bhk: "", bhkCategory: "", image: "", area: "", price: "", discountPrice: "" }]);
   };
 
   const updateUnit = (index: number, field: string, value: string) => {
@@ -253,6 +269,7 @@ export default function PropertyForm({ initial, mode }: FormProps) {
       location: location.trim(),
       units,
       amenities,
+      bhkCategories,
       totalSlots: Number(totalSlots),
       filledSlots: Number(filledSlots),
       status: status as Property["status"],
@@ -348,6 +365,45 @@ export default function PropertyForm({ initial, mode }: FormProps) {
       {/* Units */}
       <Section title="Property Units" icon="🏢">
         <div className="space-y-4">
+
+          {/* BHK Category Manager */}
+          <div className="p-4 bg-[#FAF1E6]/60 border border-[#C7C0AE]/30 rounded-xl">
+            <p className="text-xs font-black text-[#313131]/70 uppercase tracking-wider mb-3">BHK Categories (define available options)</p>
+            <div className="flex flex-wrap gap-2 mb-3">
+              {bhkCategories.map((cat, i) => (
+                <span key={i} className="flex items-center gap-1.5 bg-white border border-[#C7C0AE]/50 rounded-full px-3 py-1 text-xs font-bold text-[#313131]">
+                  {cat}
+                  <button
+                    type="button"
+                    onClick={() => removeBhkCategory(i)}
+                    className="text-red-400 hover:text-red-600 font-bold text-sm leading-none"
+                  >
+                    ×
+                  </button>
+                </span>
+              ))}
+              {bhkCategories.length === 0 && (
+                <p className="text-[11px] text-[#313131]/40 italic">No categories yet. Add one below.</p>
+              )}
+            </div>
+            <div className="flex gap-2">
+              <input
+                className={inputCls + " flex-1"}
+                value={newBhkCategory}
+                onChange={(e) => setNewBhkCategory(e.target.value)}
+                onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addBhkCategory(); } }}
+                placeholder="e.g. 2 BHK, 3 BHK, 4 BHK..."
+              />
+              <button
+                type="button"
+                onClick={addBhkCategory}
+                className="px-4 py-2 bg-[#313131] text-white text-xs font-bold rounded-xl hover:bg-[#FFA100] transition-colors whitespace-nowrap"
+              >
+                + Add
+              </button>
+            </div>
+          </div>
+
           {units.map((unit, index) => (
             <div key={index} className="p-4 bg-[#FAF1E6]/40 border border-[#C7C0AE]/40 rounded-xl relative">
               <button
@@ -365,6 +421,27 @@ export default function PropertyForm({ initial, mode }: FormProps) {
                 <Field label="BHK">
                   <input className={inputCls} value={unit.bhk} onChange={(e) => updateUnit(index, "bhk", e.target.value)} placeholder="e.g. 2 BHK" />
                 </Field>
+                <Field label="BHK Category" hint="Used for filtering on the property page">
+                  {bhkCategories.length > 0 ? (
+                    <select
+                      className={selectCls}
+                      value={unit.bhkCategory || ""}
+                      onChange={(e) => updateUnit(index, "bhkCategory", e.target.value)}
+                    >
+                      <option value="">-- Select BHK Category --</option>
+                      {bhkCategories.map((cat) => (
+                        <option key={cat} value={cat}>{cat}</option>
+                      ))}
+                    </select>
+                  ) : (
+                    <input
+                      className={inputCls}
+                      value={unit.bhkCategory || ""}
+                      onChange={(e) => updateUnit(index, "bhkCategory", e.target.value)}
+                      placeholder="Add BHK categories above first"
+                    />
+                  )}
+                </Field>
                 <Field label="Area">
                   <input className={inputCls} value={unit.area} onChange={(e) => updateUnit(index, "area", e.target.value)} placeholder="e.g. 1180 Sq.Ft." />
                 </Field>
@@ -374,6 +451,14 @@ export default function PropertyForm({ initial, mode }: FormProps) {
                 <Field label="Discount Price">
                   <input className={inputCls} value={unit.discountPrice} onChange={(e) => updateUnit(index, "discountPrice", e.target.value)} placeholder="e.g. ₹81,00,000" />
                 </Field>
+              </div>
+              <div className="mt-4 max-w-sm">
+                <ImageSlot
+                  label="Floor Plan Image"
+                  hint="Upload specific floor plan image for this unit"
+                  value={unit.image || ""}
+                  onChange={(val) => updateUnit(index, "image", val)}
+                />
               </div>
             </div>
           ))}

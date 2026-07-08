@@ -1,86 +1,7 @@
 import Link from "next/link";
 import * as motion from "motion/react-client";
 
-// Reusable animated property card
-function PropertyCard({ property }: { property: any }) {
-  let mainPrice = property.price ? `₹${(property.price / 100000).toFixed(2)}L` : "Price on Request";
-  let cutPrice = property.price ? `₹${(property.price * 1.1 / 100000).toFixed(2)}L` : null;
-
-  if (property.units && property.units.length > 0) {
-    const unit = property.units[0];
-    if (unit.price) {
-      cutPrice = unit.price;
-      mainPrice = unit.discountPrice || unit.price;
-    }
-  }
-
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      whileInView={{ opacity: 1, y: 0 }}
-      viewport={{ once: true }}
-      className="group rounded-2xl border border-[#C7C0AE]/40 bg-white overflow-hidden hover:shadow-xl hover:-translate-y-1 transition-all duration-300"
-    >
-      <div className="relative h-60 bg-[#FAF1E6] overflow-hidden">
-        {property.images && property.images.length > 0 ? (
-          <img
-            src={property.images[0]}
-            alt={property.title}
-            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-          />
-        ) : (
-          <div className="w-full h-full flex items-center justify-center bg-[#C7C0AE]/20">
-            <span className="text-[#313131]/50 font-medium font-vietnam">No Image Available</span>
-          </div>
-        )}
-        <div className="absolute top-4 left-4 bg-white/90 backdrop-blur-sm px-3 py-1 rounded-full text-xs font-bold text-[#313131] shadow-sm font-vietnam">
-          {property.type || "Apartment"}
-        </div>
-        <div className="absolute bottom-4 right-4 bg-[#313131]/90 backdrop-blur-sm px-3 py-1 rounded-full text-xs font-bold text-white shadow-sm font-vietnam">
-          {property.status === "full" ? "Sold Out" : "Filling Fast"}
-        </div>
-      </div>
-      <div className="p-6">
-        <h3 className="text-xl font-bold text-[#313131] mb-2 truncate font-vietnam">{property.title}</h3>
-        <p className="text-[#313131]/70 text-sm mb-4 line-clamp-2">{property.description}</p>
-        
-        <div className="flex items-center gap-4 text-sm text-[#313131]/80 mb-6 font-medium">
-          <span className="flex items-center gap-1.5 bg-[#FAF1E6] px-2.5 py-1 rounded-md">
-            📍 {property.location}
-          </span>
-          <span className="flex items-center gap-1.5 bg-[#FAF1E6] px-2.5 py-1 rounded-md">
-            🛏️ {property.bhk} BHK
-          </span>
-          <span className="flex items-center gap-1.5 bg-[#FAF1E6] px-2.5 py-1 rounded-md">
-            📐 {property.area} sqft
-          </span>
-        </div>
-        
-        <div className="flex items-center justify-between border-t border-[#C7C0AE]/30 pt-4">
-          <div>
-            <p className="text-xs text-[#313131]/60 font-bold uppercase tracking-wider mb-1 font-vietnam">Minimum Cost</p>
-            <div className="flex flex-col">
-              {cutPrice && cutPrice !== mainPrice && (
-                <span className="text-sm font-medium text-gray-400 line-through">
-                  {cutPrice}
-                </span>
-              )}
-              <span className="text-2xl font-extrabold text-[#FFA100]">
-                {mainPrice}
-              </span>
-            </div>
-          </div>
-          <Link
-            href={`/properties/${property._id}`}
-            className="bg-[#313131] hover:bg-[#FFA100] hover:text-[#313131] text-white px-5 py-2.5 rounded-xl font-bold transition-colors font-vietnam"
-          >
-            View Details
-          </Link>
-        </div>
-      </div>
-    </motion.div>
-  );
-}
+import PropertyCard from "@/components/PropertyCard";
 
 export default async function PropertiesPage() {
   let properties = [];
@@ -156,7 +77,7 @@ export default async function PropertiesPage() {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
             {properties.map((property: any) => (
-              <PropertyCard key={property._id} property={property} />
+              <PropertyCard key={property._id} p={property} />
             ))}
           </div>
         )}

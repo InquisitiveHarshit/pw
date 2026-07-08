@@ -8,6 +8,8 @@ export type Property = {
   units: {
     propertyType: string;
     bhk: string;
+    bhkCategory?: string;
+    image?: string;
     area: string;
     price: string;
     discountPrice: string;
@@ -27,6 +29,7 @@ export type Property = {
   promotionalTag?: string;
   reraNumber?: string;
   brochureUrl?: string;
+  bhkCategories?: string[];
   price?: number;
   bhk?: string;
   area?: string;
