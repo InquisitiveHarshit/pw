@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useAuth } from "@/lib/hooks/useAuth";
 
 const NAV_LINKS = [
   { label: "Home", href: "/" },
@@ -13,10 +14,11 @@ const NAV_LINKS = [
   { label: "About Us", href: "/about" },
 ];
 
-export default function Header() {
+export default function Header({ onLoginClick }: { onLoginClick?: () => void }) {
   const [isOpen, setIsOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const pathname = usePathname();
+  const { isLoggedIn, user, logout, loading } = useAuth();
 
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 10);
@@ -25,6 +27,7 @@ export default function Header() {
   }, []);
 
   return (
+    <>
     <header
       className={`sticky top-0 z-50 w-full transition-all duration-300 ${
         scrolled
@@ -81,18 +84,73 @@ export default function Header() {
 
           {/* Desktop CTA */}
           <div className="hidden lg:flex items-center gap-3">
-            <Link
-              href="/login"
-              className="px-4 py-2 text-sm font-semibold text-[#313131] border border-[#313131]/20 rounded-lg hover:border-[#FFA100] hover:text-[#FFA100] transition-all duration-200"
-            >
-              Login
-            </Link>
-            <Link
-              href="/properties"
-              className="px-5 py-2.5 text-sm font-semibold bg-[#313131] text-white rounded-lg hover:bg-[#FFA100] hover:text-[#313131] transition-all duration-300 shadow-sm"
-            >
-              Join a Group →
-            </Link>
+            {!loading && (
+              isLoggedIn ? (
+                <div className="flex items-center gap-3 relative group">
+                  {/* User Icon Button */}
+                  <div className="w-10 h-10 rounded-full border-2 border-[#C7C0AE]/50 bg-white flex items-center justify-center cursor-pointer group-hover:border-[#FFA100] transition-all duration-200 shadow-sm overflow-hidden">
+                    <span className="font-extrabold text-base text-[#FFA100]">
+                      {(user?.name || user?.firstName || "U")[0].toUpperCase()}
+                    </span>
+                  </div>
+
+                  {/* Dropdown Card */}
+                  <div className="absolute top-full right-0 mt-2 w-64 bg-white rounded-2xl shadow-xl border border-[#C7C0AE]/20 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50 overflow-hidden">
+                    
+                    {/* User Info Header */}
+                    <div className="bg-[#313131] px-5 py-4 flex items-center gap-3">
+                      <div className="w-11 h-11 rounded-full bg-[#FFA100] flex items-center justify-center shrink-0 shadow-md">
+                        <span className="font-extrabold text-lg text-white">
+                          {(user?.name || user?.firstName || "U")[0].toUpperCase()}
+                        </span>
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-white font-bold text-sm truncate">
+                          {user?.name || `${user?.firstName || ""} ${user?.lastName || ""}`.trim() || "User"}
+                        </p>
+                        <p className="text-white/50 text-[11px] font-medium mt-0.5 truncate">
+                          {user?.phone ? `+91 ${user.phone}` : user?.email || "—"}
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Role Badge */}
+                    <div className="px-5 py-3 border-b border-[#C7C0AE]/20 flex items-center gap-2">
+                      <span className={`text-[10px] font-extrabold px-2 py-0.5 rounded-full uppercase tracking-wider ${
+                        user?.role === "admin"
+                          ? "bg-[#FFA100]/15 text-[#FFA100] border border-[#FFA100]/30"
+                          : "bg-[#94A692]/15 text-[#94A692] border border-[#94A692]/30"
+                      }`}>
+                        {user?.role === "admin" ? "⚡ Admin" : "✓ Member"}
+                      </span>
+                      {user?.role === "admin" && (
+                        <a href="/admin" className="text-[11px] font-bold text-[#313131]/60 hover:text-[#FFA100] transition-colors ml-auto">
+                          Admin Panel →
+                        </a>
+                      )}
+                    </div>
+
+                    {/* Actions */}
+                    <div className="p-2">
+                      <button
+                        onClick={logout}
+                        className="w-full flex items-center gap-2.5 px-3 py-2.5 text-sm font-semibold text-red-500 hover:bg-red-50 rounded-xl transition-colors"
+                      >
+                        <span className="material-symbols-outlined text-[18px]">logout</span>
+                        Logout
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <button
+                  onClick={onLoginClick}
+                  className="px-4 py-2 text-sm font-semibold text-[#313131] border border-[#313131]/20 rounded-lg hover:border-[#FFA100] hover:text-[#FFA100] transition-all duration-200"
+                >
+                  Login
+                </button>
+              )
+            )}
           </div>
 
           {/* Mobile hamburger */}
@@ -149,23 +207,33 @@ export default function Header() {
           })}
 
           <div className="pt-4 pb-1 border-t border-[#C7C0AE]/20 flex flex-col gap-2">
-            <Link
-              href="/login"
-              onClick={() => setIsOpen(false)}
-              className="block text-center px-5 py-3 rounded-lg text-base font-semibold border border-[#313131]/20 text-[#313131] hover:border-[#FFA100] hover:text-[#FFA100] transition-all"
-            >
-              Login
-            </Link>
-            <Link
-              href="/properties"
-              onClick={() => setIsOpen(false)}
-              className="block text-center px-5 py-3 rounded-lg text-base font-semibold bg-[#313131] text-white hover:bg-[#FFA100] hover:text-[#313131] transition-all"
-            >
-              Join a Group →
-            </Link>
+            {!loading && (
+              isLoggedIn ? (
+                <div className="flex flex-col gap-2 mb-2">
+                  <div className="flex items-center justify-center gap-2 text-sm font-medium text-[#313131]">
+                    <span className="material-symbols-outlined">person</span>
+                    <span>Hi, {user?.name?.split(' ')[0] || 'User'}</span>
+                  </div>
+                  <button
+                    onClick={() => { setIsOpen(false); logout(); }}
+                    className="block text-center px-5 py-3 rounded-lg text-base font-semibold border border-[#313131]/20 text-[#313131] hover:border-red-500 hover:text-red-500 transition-all"
+                  >
+                    Logout
+                  </button>
+                </div>
+              ) : (
+                <button
+                  onClick={() => { setIsOpen(false); onLoginClick?.(); }}
+                  className="block text-center px-5 py-3 rounded-lg text-base font-semibold border border-[#313131]/20 text-[#313131] hover:border-[#FFA100] hover:text-[#FFA100] transition-all"
+                >
+                  Login
+                </button>
+              )
+            )}
           </div>
         </div>
       </div>
     </header>
+    </>
   );
 }

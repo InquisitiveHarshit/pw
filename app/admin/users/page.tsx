@@ -10,6 +10,8 @@ type User = {
   email: string;
   phone?: string;
   role: "user" | "admin";
+  is_paid_user: boolean;
+  allowed_joining_no_of_grps: number;
   joinedGroups: { _id: string; property?: { title?: string }; status: string }[];
   createdAt: string;
 };
@@ -37,6 +39,20 @@ export default function AdminUsersPage() {
   const [addLoading, setAddLoading] = useState(false);
   const [addError, setAddError] = useState("");
 
+  // Edit User State
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editUser, setEditUser] = useState<User | null>(null);
+  const [editData, setEditData] = useState({
+    name: "",
+    email: "",
+    phone: "",
+    role: "user" as "user" | "admin",
+    is_paid_user: false,
+    allowed_joining_no_of_grps: 2,
+  });
+  const [editLoading, setEditLoading] = useState(false);
+  const [editError, setEditError] = useState("");
+
   const getHeaders = () => {
     const token = typeof window !== "undefined" ? localStorage.getItem("pw_token") : null;
     return {
@@ -61,6 +77,11 @@ export default function AdminUsersPage() {
     fetchUsers();
   }, []);
 
+  const showToast = (msg: string) => {
+    setToast(msg);
+    setTimeout(() => setToast(null), 3000);
+  };
+
   const handleAddUser = async (e: React.FormEvent) => {
     e.preventDefault();
     setAddLoading(true);
@@ -80,8 +101,7 @@ export default function AdminUsersPage() {
         // Automatically add to list
         setUsers(prev => [data.data, ...prev]);
         setTotal(prev => prev + 1);
-        setToast("User created successfully.");
-        setTimeout(() => setToast(null), 3000);
+        showToast("User created successfully.");
       }
     } catch (err) {
       setAddError("An error occurred while creating the user.");
@@ -122,8 +142,7 @@ export default function AdminUsersPage() {
         setAssignError(data.message || "Failed to assign user.");
       } else {
         setShowAssignModal(false);
-        setToast("User successfully assigned to property group!");
-        setTimeout(() => setToast(null), 3000);
+        showToast("User successfully assigned to property group!");
         // Refresh the specific user's groups in the local state
         const updatedUsers = users.map(u => {
           if (u._id === assignUser?._id) {
@@ -147,10 +166,65 @@ export default function AdminUsersPage() {
     }
   };
 
+  // ── Edit User ──────────────────────────────────────────
+  const handleOpenEdit = (user: User) => {
+    setEditUser(user);
+    setEditData({
+      name: user.name || "",
+      email: user.email || "",
+      phone: user.phone || "",
+      role: user.role,
+      is_paid_user: user.is_paid_user ?? false,
+      allowed_joining_no_of_grps: user.allowed_joining_no_of_grps ?? 2,
+    });
+    setEditError("");
+    setShowEditModal(true);
+  };
+
+  const handleEditUser = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editUser) return;
+    setEditLoading(true);
+    setEditError("");
+    try {
+      const res = await fetch(`${BASE}/users/${editUser._id}`, {
+        method: "PUT",
+        headers: getHeaders(),
+        body: JSON.stringify({
+          name: editData.name,
+          email: editData.email,
+          phone: editData.phone,
+          role: editData.role,
+          is_paid_user: editData.is_paid_user,
+          allowed_joining_no_of_grps: Number(editData.allowed_joining_no_of_grps),
+        }),
+      });
+      const data = await res.json();
+      if (!data.success) {
+        setEditError(data.message || "Failed to update user.");
+      } else {
+        setShowEditModal(false);
+        showToast("User updated successfully.");
+        // Update local state
+        setUsers(prev =>
+          prev.map(u =>
+            u._id === editUser._id
+              ? { ...u, ...data.data, joinedGroups: u.joinedGroups }
+              : u
+          )
+        );
+      }
+    } catch (err) {
+      setEditError("An error occurred while updating.");
+    } finally {
+      setEditLoading(false);
+    }
+  };
+
   const filtered = users.filter(
     (u) =>
-      u.name.toLowerCase().includes(search.toLowerCase()) ||
-      u.email.toLowerCase().includes(search.toLowerCase())
+      (u.name || "").toLowerCase().includes(search.toLowerCase()) ||
+      (u.email || "").toLowerCase().includes(search.toLowerCase())
   );
 
   return (
@@ -207,8 +281,8 @@ export default function AdminUsersPage() {
           <table className="w-full text-sm">
             <thead className="bg-[#FAF1E6]/60">
               <tr>
-                {["User", "Email", "Phone", "Role", "Groups Joined", "Registered", "Details"].map((h) => (
-                  <th key={h} className="px-5 py-3 text-left text-xs font-bold text-[#313131]/50 uppercase tracking-wider">{h}</th>
+                {["User", "Email", "Phone", "Role", "Tier", "Group Limit", "Groups Joined", "Registered", "Actions"].map((h) => (
+                  <th key={h} className="px-4 py-3 text-left text-xs font-bold text-[#313131]/50 uppercase tracking-wider">{h}</th>
                 ))}
               </tr>
             </thead>
@@ -216,17 +290,17 @@ export default function AdminUsersPage() {
               {filtered.map((user) => (
                 <Fragment key={user._id}>
                   <tr key={user._id} className="hover:bg-[#FAF1E6]/30 transition-colors">
-                    <td className="px-5 py-4">
+                    <td className="px-4 py-4">
                       <div className="flex items-center gap-3">
                         <div className="w-8 h-8 rounded-full bg-[#FFA100]/20 flex items-center justify-center text-sm font-extrabold text-[#FFA100]">
-                          {user.name.charAt(0).toUpperCase()}
+                          {(user.name || "?").charAt(0).toUpperCase()}
                         </div>
                         <span className="font-semibold text-[#313131]">{user.name}</span>
                       </div>
                     </td>
-                    <td className="px-5 py-4 text-[#313131]/60">{user.email}</td>
-                    <td className="px-5 py-4 text-[#313131]/60">{user.phone || "—"}</td>
-                    <td className="px-5 py-4">
+                    <td className="px-4 py-4 text-[#313131]/60">{user.email}</td>
+                    <td className="px-4 py-4 text-[#313131]/60">{user.phone || "—"}</td>
+                    <td className="px-4 py-4">
                       <span className={`px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${
                         user.role === "admin"
                           ? "bg-[#FFA100]/20 text-[#FFA100]"
@@ -235,14 +309,36 @@ export default function AdminUsersPage() {
                         {user.role}
                       </span>
                     </td>
-                    <td className="px-5 py-4 text-[#313131]/60 text-center">
+                    {/* Tier Column */}
+                    <td className="px-4 py-4">
+                      <span className={`px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${
+                        user.is_paid_user
+                          ? "bg-emerald-100 text-emerald-700"
+                          : "bg-gray-100 text-gray-500"
+                      }`}>
+                        {user.is_paid_user ? "Paid" : "Free"}
+                      </span>
+                    </td>
+                    {/* Group Limit Column */}
+                    <td className="px-4 py-4 text-center">
+                      <span className="font-bold text-[#313131]">{user.joinedGroups?.length || 0}</span>
+                      <span className="text-[#313131]/40"> / {user.allowed_joining_no_of_grps ?? 2}</span>
+                    </td>
+                    <td className="px-4 py-4 text-[#313131]/60 text-center">
                       {user.joinedGroups?.length || 0}
                     </td>
-                    <td className="px-5 py-4 text-[#313131]/40 text-xs">
+                    <td className="px-4 py-4 text-[#313131]/40 text-xs">
                       {new Date(user.createdAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
                     </td>
-                    <td className="px-5 py-4">
-                      <div className="flex gap-3 items-center">
+                    <td className="px-4 py-4">
+                      <div className="flex gap-2 items-center">
+                        {/* Edit Button */}
+                        <button
+                          onClick={() => handleOpenEdit(user)}
+                          className="px-2.5 py-1 text-[10px] font-bold rounded bg-blue-600 text-white hover:bg-blue-700 transition-colors whitespace-nowrap"
+                        >
+                          ✎ Edit
+                        </button>
                         {(user.joinedGroups?.length || 0) > 0 && (
                           <button
                             onClick={() => setExpanded(expanded === user._id ? null : user._id)}
@@ -264,7 +360,7 @@ export default function AdminUsersPage() {
                   {/* Expanded group details */}
                   {expanded === user._id && (
                     <tr key={`${user._id}-expanded`}>
-                      <td colSpan={7} className="px-5 pb-4 pt-0 bg-[#FAF1E6]/30">
+                      <td colSpan={9} className="px-5 pb-4 pt-0 bg-[#FAF1E6]/30">
                         <div className="ml-11">
                           <p className="text-xs font-bold text-[#313131]/50 uppercase tracking-wider mb-2">Group Memberships</p>
                           <div className="space-y-1.5">
@@ -455,6 +551,132 @@ export default function AdminUsersPage() {
                   className="w-full py-3 bg-[#FFA100] hover:bg-[#FF8C00] text-white font-bold rounded-xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {assignLoading ? "Assigning..." : "Assign User"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ── Edit User Modal ──────────────────────────── */}
+      {showEditModal && editUser && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-2xl p-6 w-full max-w-lg shadow-xl border border-[#C7C0AE]/30 relative">
+            <button
+              onClick={() => setShowEditModal(false)}
+              className="absolute top-4 right-4 text-[#313131]/40 hover:text-[#313131] transition-colors"
+            >
+              ✕
+            </button>
+            <h3 className="text-xl font-extrabold text-[#313131] mb-1 font-vietnam">Edit User</h3>
+            <p className="text-sm text-[#313131]/60 mb-5">
+              Editing <strong>{editUser.name}</strong> — {editUser.email}
+            </p>
+
+            {editError && (
+              <div className="mb-4 bg-red-50 text-red-600 text-sm font-semibold p-3 rounded-xl border border-red-200">
+                ⚠️ {editError}
+              </div>
+            )}
+
+            <form onSubmit={handleEditUser} className="space-y-4">
+              {/* Tier & Group Limit Row */}
+              <div className="bg-[#FAF1E6]/60 rounded-xl p-4 border border-[#C7C0AE]/20 space-y-4">
+                <p className="text-xs font-bold text-[#313131]/50 uppercase tracking-wider">Subscription & Limits</p>
+
+                {/* Paid Toggle */}
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-bold text-[#313131]">Paid User</p>
+                    <p className="text-xs text-[#313131]/50">Toggle between free and paid tier</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setEditData({ ...editData, is_paid_user: !editData.is_paid_user })}
+                    className={`relative inline-flex h-7 w-12 items-center rounded-full transition-colors duration-200 ${
+                      editData.is_paid_user ? "bg-emerald-500" : "bg-gray-300"
+                    }`}
+                  >
+                    <span
+                      className={`inline-block h-5 w-5 transform rounded-full bg-white shadow-sm transition-transform duration-200 ${
+                        editData.is_paid_user ? "translate-x-6" : "translate-x-1"
+                      }`}
+                    />
+                  </button>
+                </div>
+
+                {/* Group Limit */}
+                <div>
+                  <label className="block text-sm font-bold text-[#313131] mb-1">
+                    Max Groups Allowed
+                  </label>
+                  <p className="text-xs text-[#313131]/50 mb-2">
+                    Currently joined: <strong>{editUser.joinedGroups?.length || 0}</strong> groups
+                  </p>
+                  <input
+                    type="number"
+                    min={0}
+                    value={editData.allowed_joining_no_of_grps}
+                    onChange={(e) => setEditData({ ...editData, allowed_joining_no_of_grps: parseInt(e.target.value) || 0 })}
+                    className="w-full px-4 py-2.5 rounded-xl border border-[#C7C0AE]/50 text-sm focus:outline-none focus:border-[#FFA100] transition-colors"
+                  />
+                </div>
+              </div>
+
+              {/* Role */}
+              <div>
+                <label className="block text-xs font-bold text-[#313131]/60 uppercase tracking-wider mb-1.5">Role</label>
+                <select
+                  value={editData.role}
+                  onChange={(e) => setEditData({ ...editData, role: e.target.value as "user" | "admin" })}
+                  className="w-full px-4 py-2.5 rounded-xl border border-[#C7C0AE]/50 text-sm focus:outline-none focus:border-[#FFA100] transition-colors bg-white"
+                >
+                  <option value="user">User</option>
+                  <option value="admin">Admin</option>
+                </select>
+              </div>
+
+              {/* Name & Email */}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-bold text-[#313131]/60 uppercase tracking-wider mb-1.5">Name</label>
+                  <input
+                    type="text"
+                    value={editData.name}
+                    onChange={(e) => setEditData({ ...editData, name: e.target.value })}
+                    className="w-full px-4 py-2.5 rounded-xl border border-[#C7C0AE]/50 text-sm focus:outline-none focus:border-[#FFA100] transition-colors"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-[#313131]/60 uppercase tracking-wider mb-1.5">Email</label>
+                  <input
+                    type="email"
+                    value={editData.email}
+                    onChange={(e) => setEditData({ ...editData, email: e.target.value })}
+                    className="w-full px-4 py-2.5 rounded-xl border border-[#C7C0AE]/50 text-sm focus:outline-none focus:border-[#FFA100] transition-colors"
+                  />
+                </div>
+              </div>
+
+              {/* Phone */}
+              <div>
+                <label className="block text-xs font-bold text-[#313131]/60 uppercase tracking-wider mb-1.5">Phone</label>
+                <input
+                  type="text"
+                  value={editData.phone}
+                  onChange={(e) => setEditData({ ...editData, phone: e.target.value })}
+                  className="w-full px-4 py-2.5 rounded-xl border border-[#C7C0AE]/50 text-sm focus:outline-none focus:border-[#FFA100] transition-colors"
+                  placeholder="e.g. +91 9998887776"
+                />
+              </div>
+
+              <div className="pt-2">
+                <button
+                  type="submit"
+                  disabled={editLoading}
+                  className="w-full py-3 bg-[#FFA100] hover:bg-[#FF8C00] text-white font-bold rounded-xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {editLoading ? "Saving..." : "Save Changes"}
                 </button>
               </div>
             </form>

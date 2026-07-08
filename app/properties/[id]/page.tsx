@@ -3,6 +3,9 @@
 import React, { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { getProperty, type Property } from "@/lib/api/properties";
+import { joinGroup } from "@/lib/api/groups";
+import LoginFlow from "@/components/auth/LoginFlow";
+import PaymentModal from "@/components/plans/PaymentModal";
 
 // Helper to format price (if needed for older data)
 const formatPrice = (price?: number | string) => {
@@ -15,6 +18,9 @@ export default function PropertyDetailsPage() {
   const params = useParams();
   const [property, setProperty] = useState<Property | null>(null);
   const [loading, setLoading] = useState(true);
+  const [joining, setJoining] = useState(false);
+  const [showLogin, setShowLogin] = useState(false);
+  const [showPayment, setShowPayment] = useState(false);
 
   useEffect(() => {
     const fetchProperty = async () => {
@@ -32,6 +38,36 @@ export default function PropertyDetailsPage() {
     };
     fetchProperty();
   }, [params.id]);
+
+  const handleJoinGroup = async () => {
+    setJoining(true);
+    try {
+      if (!property) return;
+      const res = await joinGroup({ propertyId: property._id, interestedBHK: "3BHK" });
+      // request helper throws on !res.ok, but if it doesn't:
+      if (res.success) {
+        alert("Successfully joined the group!");
+        setProperty((prev) => prev ? { ...prev, filledSlots: (prev.filledSlots || 0) + 1 } : prev);
+      } else {
+        if (res.message?.includes("maximum") || res.message?.includes("upgrade") || (res as any).errorCode === "UPGRADE_REQUIRED") {
+          setShowPayment(true);
+        } else {
+          alert(res.message || "Failed to join group.");
+        }
+      }
+    } catch (error: any) {
+      // If request helper throws an error with status
+      if (error?.status === 403 || error?.message?.includes("maximum") || error?.message?.includes("upgrade") || error?.message?.includes("403")) {
+        setShowPayment(true);
+      } else if (error?.status === 401 || error?.message?.includes("401")) {
+        setShowLogin(true);
+      } else {
+        alert("Error joining group: " + error?.message);
+      }
+    } finally {
+      setJoining(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -108,7 +144,7 @@ export default function PropertyDetailsPage() {
               onError={(e) => { (e.target as HTMLImageElement).src = "/property_apartment.png"; }}
             />
             <div className="absolute bottom-4 left-4 bg-black/60 text-white text-xs font-bold px-3 py-1.5 rounded-full flex items-center gap-2 backdrop-blur-sm">
-              <span>🖼️ All Photos & Videos</span>
+              <span>≡ƒû╝∩╕Å All Photos & Videos</span>
             </div>
           </div>
           
@@ -123,7 +159,7 @@ export default function PropertyDetailsPage() {
               />
               <div className="absolute inset-0 bg-black/20 flex items-center justify-center">
                 <div className="w-10 h-10 bg-white/30 backdrop-blur-md rounded-full flex items-center justify-center">
-                  <span className="text-white text-lg">▶</span>
+                  <span className="text-white text-lg">Γû╢</span>
                 </div>
               </div>
               <div className="absolute bottom-2 left-2 text-white text-[10px] font-bold">Videos</div>
@@ -165,10 +201,7 @@ export default function PropertyDetailsPage() {
                       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"></path></svg>
                     </button>
                   </h1>
-                  <p className="text-sm text-gray-600 mt-1">
-                    {sector}, {city}
-                    {property.reraNumber && <span className="ml-2 font-bold text-teal-600">✓ RERA: {property.reraNumber}</span>}
-                  </p>
+                  <p className="text-sm text-gray-600 mt-1">{sector}, {city}</p>
                 </div>
               </div>
               <button className="w-full sm:w-auto px-6 py-2.5 bg-[#0078DB] hover:bg-[#0060B0] text-white font-bold rounded text-sm transition-colors shadow-sm">
@@ -180,23 +213,23 @@ export default function PropertyDetailsPage() {
             <div className="flex flex-wrap gap-2 pt-2">
               {property.promotionalTag && (
                 <span className="px-3 py-1 bg-red-50 text-red-700 border border-red-200 text-[10px] font-bold rounded flex items-center gap-1">
-                  🔥 {property.promotionalTag}
+                  ≡ƒöÑ {property.promotionalTag}
                 </span>
               )}
               {property.reraNumber ? (
                 <span className="px-3 py-1 bg-teal-500 text-white text-[10px] font-bold uppercase rounded flex items-center gap-1">
-                  ✓ RERA: {property.reraNumber}
+                  Γ£ô RERA: {property.reraNumber}
                 </span>
               ) : (
                 <span className="px-3 py-1 bg-teal-500 text-white text-[10px] font-bold uppercase rounded flex items-center gap-1">
-                  ✓ RERA
+                  Γ£ô RERA
                 </span>
               )}
               <span className="px-3 py-1 bg-green-50 text-green-700 border border-green-200 text-[10px] font-bold rounded">
                 No Brokerage
               </span>
               <span className="px-3 py-1 bg-purple-50 text-purple-700 border border-purple-200 text-[10px] font-bold rounded">
-                EMI Starts ₹{Math.floor(Math.random() * 50 + 20)}K
+                EMI Starts ₹50K
               </span>
               <span className="px-3 py-1 bg-orange-50 text-orange-700 border border-orange-200 text-[10px] font-bold rounded">
                 Top Facilities
@@ -221,7 +254,7 @@ export default function PropertyDetailsPage() {
 
             {/* Price Overview */}
             <div className="pt-6">
-              <div className="w-8 h-8 rounded-full bg-orange-100 flex items-center justify-center text-orange-500 mb-2">₹</div>
+              <div className="w-8 h-8 rounded-full bg-orange-100 flex items-center justify-center text-orange-500 mb-2">Γé╣</div>
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
                   <div className="flex items-baseline gap-2">
@@ -260,22 +293,7 @@ export default function PropertyDetailsPage() {
                     <p className="text-sm font-bold">{config.type}</p>
                     <p className="text-[10px] text-gray-500 mt-1">Carpet Area</p>
                     <p className="text-xs font-semibold">{config.carpetArea}</p>
-                    <div className="mt-2">
-                      {config.startingPrice !== config.discountPrice ? (
-                        <>
-                          <p className="text-[10px] font-medium text-gray-400 line-through">
-                            {config.startingPrice} <span className="font-normal">+ Charges</span>
-                          </p>
-                          <p className="text-sm font-bold text-[#FFA100]">
-                            {config.discountPrice} <span className="text-[10px] font-normal text-[#0078DB]">+ Charges</span>
-                          </p>
-                        </>
-                      ) : (
-                        <p className="text-sm font-bold text-[#FFA100]">
-                          {config.startingPrice} <span className="text-[10px] font-normal text-[#0078DB]">+ Charges</span>
-                        </p>
-                      )}
-                    </div>
+                    <p className="text-sm font-bold mt-2">{config.startingPrice} <span className="text-[10px] text-[#0078DB] font-normal">+ Charges</span></p>
                   </div>
                 ))}
               </div>
@@ -311,14 +329,7 @@ export default function PropertyDetailsPage() {
                         <img src="/floorplan_mock.webp" alt="Floorplan" className="max-h-full object-contain opacity-80 mix-blend-multiply" onError={(e) => { (e.target as HTMLImageElement).src = "/property_apartment.png"; }} />
                       </div>
                       
-                      {config.startingPrice !== config.discountPrice ? (
-                        <div className="flex flex-col">
-                          <span className="text-xs text-gray-400 line-through">{config.startingPrice}</span>
-                          <span className="font-extrabold text-base text-[#FFA100]">{config.discountPrice}</span>
-                        </div>
-                      ) : (
-                        <div className="font-extrabold text-base">{config.startingPrice}</div>
-                      )}
+                      <div className="font-extrabold text-base">{config.startingPrice}</div>
                       
                       <div className="mt-3 bg-gray-50 p-2 rounded text-[10px] text-gray-600">
                         <p>{statusStr}</p>
@@ -334,7 +345,46 @@ export default function PropertyDetailsPage() {
               </div>
             </div>
 
-
+            {/* Sellers */}
+            <div className="pt-8">
+              <div className="flex justify-between items-end mb-4">
+                <h2 className="text-xl font-extrabold text-gray-900">Sellers you may contact for more details</h2>
+                <a href="#" className="text-xs font-bold text-[#0078DB] hover:underline">View All Sellers</a>
+              </div>
+              
+              <div className="w-64 bg-gray-900 rounded-xl overflow-hidden relative shadow-lg">
+                <div className="absolute top-2 left-2 bg-[#FFA100] text-black text-[10px] font-bold px-2 py-0.5 rounded flex items-center gap-1 z-10">
+                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path></svg>
+                  Property Advisor
+                </div>
+                
+                <div className="h-32 bg-black/40 relative">
+                  <img src={heroImage} className="w-full h-full object-cover opacity-50" alt="Background" onError={(e) => { (e.target as HTMLImageElement).src = "/property_condo.png"; }} />
+                  <div className="absolute inset-0 flex flex-col justify-center items-center text-center p-4">
+                     <p className="text-yellow-400 text-[10px] font-bold mb-1">Our Expertise</p>
+                     <p className="text-white font-bold text-sm leading-tight">{locationHighlights.split("|")[0]}</p>
+                     <div className="w-8 h-8 rounded-full bg-black/50 border border-white/20 flex items-center justify-center mt-3">
+                       <span className="text-white text-xs">Γû╢</span>
+                     </div>
+                  </div>
+                </div>
+                
+                <div className="bg-[#1A2642] p-4 text-white">
+                  <div className="flex items-center gap-3 mb-4">
+                    <div className="w-10 h-10 rounded-full bg-gray-700 overflow-hidden border border-gray-600">
+                      <img src="https://i.pravatar.cc/150?u=a042581f4e29026704d" alt="Broker" className="w-full h-full object-cover" />
+                    </div>
+                    <div>
+                      <p className="font-bold text-sm">{developerName.toUpperCase()}</p>
+                      <p className="text-[10px] text-gray-400">Verified Partner</p>
+                    </div>
+                  </div>
+                  <button className="w-full bg-white text-[#1A2642] hover:bg-gray-100 font-bold text-sm py-2 rounded transition-colors">
+                    View Number
+                  </button>
+                </div>
+              </div>
+            </div>
 
             {/* Top Facilities */}
             <div className="pt-8">
@@ -349,16 +399,19 @@ export default function PropertyDetailsPage() {
                   <div key={idx} className="bg-gray-50 rounded-xl p-3 flex flex-col items-center justify-center text-center gap-2 hover:bg-gray-100 transition-colors cursor-pointer border border-transparent hover:border-gray-200">
                     <div className="w-10 h-10 rounded-full bg-white shadow-sm flex items-center justify-center text-lg text-[#0078DB]">
                       {/* Using generic emojis as icons for now */}
-                      {amenity.includes("Pool") ? "🏊" : 
-                       amenity.includes("Gym") ? "🏋️" : 
-                       amenity.includes("Club") ? "🏛️" : 
-                       amenity.includes("Security") ? "🛡️" : 
-                       amenity.includes("Parking") ? "🚗" : "✨"}
+                      {amenity.includes("Pool") ? "≡ƒÅè" : 
+                       amenity.includes("Gym") ? "≡ƒÅï∩╕Å" : 
+                       amenity.includes("Club") ? "≡ƒÅ¢∩╕Å" : 
+                       amenity.includes("Security") ? "≡ƒ¢í∩╕Å" : 
+                       amenity.includes("Parking") ? "≡ƒÜù" : "Γ£¿"}
                     </div>
                     <span className="text-[10px] font-semibold text-gray-700 leading-tight">{amenity}</span>
                   </div>
                 ))}
               </div>
+              <button className="mt-4 text-xs font-bold text-gray-900 border-b-2 border-gray-900 pb-0.5 hover:text-[#0078DB] hover:border-[#0078DB] transition-colors">
+                View Facility Photos ΓåÆ
+              </button>
             </div>
 
             {/* Location Advantages */}
@@ -373,7 +426,7 @@ export default function PropertyDetailsPage() {
                 {locationHighlights.split("|").map((highlight, idx) => (
                   <div key={idx} className="border border-gray-200 rounded-lg p-3 flex items-center gap-3">
                     <div className="w-8 h-8 rounded-full bg-blue-50 text-blue-500 flex items-center justify-center shrink-0">
-                      🏢
+                      ≡ƒÅó
                     </div>
                     <div>
                       <p className="text-xs font-bold text-gray-800 line-clamp-1">{highlight.trim()}</p>
@@ -389,71 +442,128 @@ export default function PropertyDetailsPage() {
               <h2 className="text-xl font-extrabold text-gray-900 mb-4">More about {projectName}</h2>
               <div className="text-sm text-gray-600 leading-relaxed space-y-4">
                 <p>{description}</p>
+                <p>{aboutDeveloper}</p>
               </div>
               <button className="mt-2 text-xs font-bold text-[#0078DB] hover:underline">
                 Read more
               </button>
             </div>
 
-            {/* Developer Details */}
-            <div className="pt-4 pb-12">
-              <div className="bg-white border border-[#C7C0AE]/40 rounded-2xl p-6 text-[#313131] shadow-md relative overflow-hidden">
-                <div className="absolute top-0 right-0 w-32 h-32 bg-[#FAF1E6] rounded-full blur-2xl -mr-10 -mt-10"></div>
-                <div className="absolute bottom-0 left-0 w-24 h-24 bg-[#FFA100]/10 rounded-full blur-xl -ml-8 -mb-8"></div>
-                <div className="relative z-10 flex flex-col sm:flex-row gap-6 items-center sm:items-start">
-                  <div className="w-20 h-20 rounded-full bg-[#FAF1E6] border-2 border-[#C7C0AE]/30 flex items-center justify-center shrink-0">
-                    <span className="text-3xl font-extrabold text-[#FFA100]">{developerName[0]?.toUpperCase()}</span>
+          </div>
+
+
+            {/* Sticky Sidebar (Right) */}
+            <aside className="lg:col-span-4 h-fit sticky top-28 mt-8 lg:mt-0">
+              <div className="bg-white p-6 sm:p-8 rounded-lg text-[#313131] space-y-8 shadow-[0_4px_20px_rgba(49,49,49,0.04)] border border-[#C7C0AE]/30">
+                <div className="space-y-4">
+                  <h3 className="font-serif text-2xl font-bold text-[#313131]">Join the Group</h3>
+                  <p className="text-[#313131]/70 text-sm font-medium">Secure institutional-grade pricing by joining the current collective of verified investors.</p>
+                </div>
+                <div className="space-y-2">
+                  <div className="flex justify-between text-sm font-bold">
+                    <span className="text-[#94A692]">{property.filledSlots || 0} people have joined</span>
                   </div>
-                  <div className="text-center sm:text-left flex-1">
-                    <p className="text-[10px] text-[#313131]/50 font-bold uppercase tracking-wider mb-1">Developed By</p>
-                    <h3 className="text-xl font-extrabold text-[#313131] mb-2">{developerName}</h3>
-                    <p className="text-sm text-[#313131]/70 leading-relaxed max-w-2xl">{aboutDeveloper}</p>
+                  <p className="text-xs text-[#313131]/50 italic">Group closes soon</p>
+                </div>
+                <div className="bg-[#FAF1E6]/50 p-4 rounded-lg border border-[#C7C0AE]/20 space-y-3">
+                  <div className="flex justify-between items-center">
+                    <span className="text-xs font-bold text-[#313131]/70">Estimated Saving</span>
+                    <span className="text-[#FFA100] font-bold text-lg">
+                      {configurations[0]?.startingPrice !== configurations[0]?.discountPrice ? 
+                        `Exclusive %` : "Group Buy Rate"}
+                    </span>
                   </div>
-                  <button className="w-full sm:w-auto px-6 py-2.5 bg-[#313131] hover:bg-[#FFA100] hover:text-[#313131] text-white font-bold rounded-xl transition-all shadow-sm mt-4 sm:mt-0 whitespace-nowrap font-vietnam">
-                    Contact Developer
-                  </button>
+                  <div className="flex justify-between items-center">
+                    <span className="text-xs font-bold text-[#313131]/70">Status</span>
+                    <span className="text-[#313131] text-sm font-bold capitalize">{property.status}</span>
+                  </div>
+                </div>
+                <button 
+                  onClick={handleJoinGroup}
+                  disabled={joining}
+                  className="w-full bg-[#FFA100] text-white py-4 rounded-lg text-sm font-bold hover:brightness-110 transition-all shadow-lg shadow-[#FFA100]/20 disabled:opacity-70 disabled:cursor-not-allowed"
+                >
+                  {joining ? "Processing..." : "Join Buying Group"}
+                </button>
+                <div className="flex items-center justify-center gap-2 pt-4 border-t border-[#C7C0AE]/20 opacity-60">
+                  <span className="material-symbols-outlined text-sm text-[#313131]">verified_user</span>
+                  <span className="text-[10px] font-bold tracking-widest uppercase text-[#313131]">Secured & Encrypted</span>
                 </div>
               </div>
-            </div>
 
-          </div>
-
-          {/* RIGHT SIDEBAR (Contact Form) */}
-          <div className="hidden lg:block lg:col-span-4">
-            <div className="sticky top-24 bg-white border border-gray-200 rounded-2xl p-6 shadow-xl">
-              <h3 className="font-extrabold text-lg mb-2">Contact Seller</h3>
-              <p className="text-xs text-gray-500 mb-6">Please fill in your details to get a call back.</p>
-              
-              <form className="space-y-4">
-                <div>
-                  <label className="block text-xs font-bold text-gray-700 mb-1">Name</label>
-                  <input type="text" className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-[#0078DB] focus:border-[#0078DB] outline-none text-sm" placeholder="Your Name" />
-                </div>
-                <div>
-                  <label className="block text-xs font-bold text-gray-700 mb-1">Phone Number</label>
-                  <div className="flex">
-                    <span className="inline-flex items-center px-3 border border-r-0 border-gray-300 rounded-l bg-gray-50 text-gray-500 text-sm">
-                      +91
-                    </span>
-                    <input type="tel" className="flex-1 px-3 py-2 border border-gray-300 rounded-r focus:ring-2 focus:ring-[#0078DB] focus:border-[#0078DB] outline-none text-sm" placeholder="Your Number" />
+              {/* Developer Quick View */}
+              <div className="mt-8 bg-white p-6 rounded-lg shadow-[0_4px_20px_rgba(49,49,49,0.04)] border border-[#C7C0AE]/20">
+                <p className="text-[10px] text-[#313131]/70 uppercase tracking-widest mb-4 font-bold">Project By</p>
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 shrink-0 rounded-full bg-[#FAF1E6] flex items-center justify-center border border-[#C7C0AE]">
+                    <span className="material-symbols-outlined text-[#313131]">apartment</span>
+                  </div>
+                  <div>
+                    <p className="text-sm font-bold text-[#313131] truncate">{developerName}</p>
+                    <p className="text-xs text-[#313131]/60 mt-1 truncate">Top Tier • Assured Delivery</p>
                   </div>
                 </div>
-                <div>
-                  <label className="block text-xs font-bold text-gray-700 mb-1">Email</label>
-                  <input type="email" className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-[#0078DB] focus:border-[#0078DB] outline-none text-sm" placeholder="Your Email" />
-                </div>
-                <button type="button" className="w-full py-3 bg-[#FFA100] hover:bg-[#ffaa1a] text-black font-extrabold rounded-lg shadow-sm transition-colors mt-2">
-                  Get Contact Details
-                </button>
-                <p className="text-[9px] text-gray-400 text-center mt-4">
-                  By submitting this form, you agree to our Terms and Conditions and Privacy Policy.
-                </p>
-              </form>
-            </div>
-          </div>
+              </div>
+            </aside>
 
         </div>
       </div>
+
+        {/* Footer Section */}
+        <footer className="mt-24 border-t border-[#C7C0AE]/20 bg-[#FAF1E6]/50 py-12 md:py-20">
+          <div className="max-w-[1280px] mx-auto px-4 md:px-12">
+            <div className="bg-[#94A692]/5 p-8 md:p-12 rounded-lg border border-[#94A692]/10 grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-12 items-center">
+              <div>
+                <div className="w-16 h-16 rounded-xl bg-white flex items-center justify-center border border-[#C7C0AE] shadow-sm mb-6">
+                  <span className="font-serif text-[#313131] text-2xl font-bold">{developerName[0]?.toUpperCase()}</span>
+                </div>
+                <h3 className="font-serif text-2xl sm:text-3xl font-bold text-[#313131] mb-4">{developerName} Bio</h3>
+                <p className="text-[#313131]/80 leading-relaxed mb-6 text-sm sm:text-base line-clamp-3 sm:line-clamp-none">{aboutDeveloper}</p>
+                <div className="flex flex-wrap gap-4">
+                  <button className="px-6 py-2 border border-[#313131] rounded-lg text-sm font-bold text-[#313131] hover:bg-[#313131] hover:text-white transition-all">View All Projects</button>
+                  <button className="px-6 py-2 border border-[#313131] rounded-lg text-sm font-bold text-[#313131] hover:bg-[#313131] hover:text-white transition-all">Developer Profile</button>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="bg-white p-4 sm:p-6 rounded-lg shadow-sm border border-[#C7C0AE]/20 text-center">
+                  <p className="text-2xl sm:text-3xl font-bold text-[#313131]">10M+</p>
+                  <p className="text-[10px] sm:text-xs font-bold text-[#313131]/70 mt-1">Sq.Ft Delivered</p>
+                </div>
+                <div className="bg-white p-4 sm:p-6 rounded-lg shadow-sm border border-[#C7C0AE]/20 text-center">
+                  <p className="text-2xl sm:text-3xl font-bold text-[#313131]">4.7/5</p>
+                  <p className="text-[10px] sm:text-xs font-bold text-[#313131]/70 mt-1">Investor Rating</p>
+                </div>
+                <div className="bg-white p-4 sm:p-6 rounded-lg shadow-sm border border-[#C7C0AE]/20 text-center">
+                  <p className="text-2xl sm:text-3xl font-bold text-[#313131]">5k+</p>
+                  <p className="text-[10px] sm:text-xs font-bold text-[#313131]/70 mt-1">Happy Residents</p>
+                </div>
+                <div className="bg-white p-4 sm:p-6 rounded-lg shadow-sm border border-[#C7C0AE]/20 text-center">
+                  <p className="text-2xl sm:text-3xl font-bold text-[#313131]">A+</p>
+                  <p className="text-[10px] sm:text-xs font-bold text-[#313131]/70 mt-1">Credit Rating</p>
+                </div>
+              </div>
+            </div>
+            
+            <div className="mt-16 flex flex-col md:flex-row justify-between items-center gap-6 opacity-60">
+              <span className="font-serif text-[#313131] text-xl font-bold tracking-tight">Properties Wallah</span>
+              <nav className="flex flex-wrap justify-center gap-6 sm:gap-8 text-[10px] sm:text-xs font-bold uppercase tracking-widest text-[#313131]">
+                <a href="#">Privacy</a>
+                <a href="#">Terms</a>
+                <a href="#">Contact</a>
+              </nav>
+              <p className="text-[10px] sm:text-xs font-bold text-[#313131]">© 2026 Properties Wallah. All Rights Reserved.</p>
+            </div>
+          </div>
+        </footer>
+      
+
+      {/* Modals */}
+      <LoginFlow isOpen={showLogin} onClose={() => setShowLogin(false)} />
+      <PaymentModal 
+        isOpen={showPayment} 
+        onClose={() => setShowPayment(false)} 
+        onUpgradeSuccess={() => alert("Your group limit has been upgraded! You can now join.")} 
+      />
     </div>
   );
 }
