@@ -424,6 +424,7 @@ export default function PropertyForm({ initial, mode }: FormProps) {
                 <Field label="BHK Category" hint="Used for filtering on the property page">
                   {bhkCategories.length > 0 ? (
                     <select
+                      key={bhkCategories.join(',')}
                       className={selectCls}
                       value={unit.bhkCategory || ""}
                       onChange={(e) => updateUnit(index, "bhkCategory", e.target.value)}
