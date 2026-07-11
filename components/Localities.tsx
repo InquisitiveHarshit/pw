@@ -18,8 +18,9 @@ export default function Localities() {
     getLocalities()
       .then((res) => {
         if (res.success) {
+          const homepageLocs = res.data.filter((loc) => loc.showOnHomepage);
           // Show up to 8 localities; prioritise ones with images
-          const sorted = [...res.data].sort((a, b) =>
+          const sorted = homepageLocs.sort((a, b) =>
             (b.image ? 1 : 0) - (a.image ? 1 : 0)
           );
           setLocalities(sorted.slice(0, 8));

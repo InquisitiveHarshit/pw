@@ -509,13 +509,24 @@ export default function PropertyForm({ initial, mode }: FormProps) {
 
       {/* Group Buying Settings */}
       <Section title="Group Buying Settings" icon="👥">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
           <Field label="Total Slots" required hint="Maximum buyers allowed in this property's group">
             <input className={inputCls} type="number" min="1" value={totalSlots} onChange={(e) => setTotalSlots(e.target.value)} />
           </Field>
-          <Field label="Filled Slots" hint="Buyers who have already joined">
-            <input className={inputCls} type="number" min="0" value={filledSlots} onChange={(e) => setFilledSlots(e.target.value)} />
-          </Field>
+          {mode === "edit" && (
+            <>
+              <Field label="Groups Formed" hint="Automatically updated">
+                <div className="px-4 py-2.5 bg-[#FAF1E6]/80 border border-[#C7C0AE]/40 rounded-xl text-sm font-bold text-[#313131]">
+                  {initial?.groupsCount ?? 0}
+                </div>
+              </Field>
+              <Field label="Members Joined" hint="Automatically updated">
+                <div className="px-4 py-2.5 bg-[#FAF1E6]/80 border border-[#C7C0AE]/40 rounded-xl text-sm font-bold text-[#313131]">
+                  {initial?.filledSlots ?? 0}
+                </div>
+              </Field>
+            </>
+          )}
         </div>
       </Section>
 

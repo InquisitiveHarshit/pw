@@ -29,6 +29,7 @@ export type Property = {
   promotionalTag?: string;
   reraNumber?: string;
   brochureUrl?: string;
+  groupsCount?: number;
   bhkCategories?: string[];
   price?: number;
   bhk?: string;

@@ -21,36 +21,49 @@ async function uploadToCloudinary(file: File): Promise<string> {
 }
 
 export default function LocalityContentPage() {
-  const [localities, setLocalities] = useState<Locality[]>([]);
+  const [allLocalities, setAllLocalities] = useState<Locality[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [toast, setToast] = useState<{ msg: string; type: "success" | "error" } | null>(null);
 
-  // Per-locality state: { [id]: { image, uploading, saving } }
+  // New Locality Form State
+  const [selectedLocalityId, setSelectedLocalityId] = useState("");
+  const [newImage, setNewImage] = useState("");
+  const [isAdding, setIsAdding] = useState(false);
+  const newFileInputRef = useRef<HTMLInputElement>(null);
+
+  // Per-locality state for those already on homepage: { [id]: { image, uploading, saving } }
   const [state, setState] = useState<
     Record<string, { image: string; uploading: boolean; saving: boolean }>
   >({});
 
   const fileRefs = useRef<Record<string, HTMLInputElement | null>>({});
 
-  useEffect(() => {
-    setLoading(true);
+  const fetchLocalities = () => {
     getLocalities().then((res) => {
       if (res.success) {
-        setLocalities(res.data);
-        // Seed state from existing images
+        setAllLocalities(res.data);
         const init: Record<string, { image: string; uploading: boolean; saving: boolean }> = {};
         res.data.forEach((loc) => {
-          init[loc._id] = { image: loc.image || "", uploading: false, saving: false };
+          if (loc.showOnHomepage) {
+            init[loc._id] = { image: loc.image || "", uploading: false, saving: false };
+          }
         });
         setState(init);
       }
       setLoading(false);
     });
+  };
+
+  useEffect(() => {
+    setLoading(true);
+    fetchLocalities();
   }, []);
 
-  // Filtered localities
-  const filtered = localities.filter(
+  const homepageLocalities = allLocalities.filter((loc) => loc.showOnHomepage);
+  const availableLocalities = allLocalities.filter((loc) => !loc.showOnHomepage);
+
+  const filtered = homepageLocalities.filter(
     (loc) =>
       loc.name.toLowerCase().includes(search.toLowerCase()) ||
       (loc.city || "").toLowerCase().includes(search.toLowerCase())
@@ -77,13 +90,49 @@ export default function LocalityContentPage() {
     }
   };
 
+  const handleNewFileUpload = async (file: File) => {
+    try {
+      const url = await uploadToCloudinary(file);
+      setNewImage(url);
+    } catch {
+      showToast("Failed to upload image.", "error");
+    }
+  };
+
+  const handleAddToHomepage = async () => {
+    if (!selectedLocalityId) return showToast("Select a locality first", "error");
+    
+    setIsAdding(true);
+    try {
+      await updateLocality(selectedLocalityId, { showOnHomepage: true, image: newImage });
+      showToast("Added to homepage!", "success");
+      setSelectedLocalityId("");
+      setNewImage("");
+      fetchLocalities();
+    } catch (err: any) {
+      showToast(err.message || "Failed to add.", "error");
+    } finally {
+      setIsAdding(false);
+    }
+  };
+
+  const handleRemoveFromHomepage = async (id: string) => {
+    if (!confirm("Remove this locality from the homepage?")) return;
+    try {
+      await updateLocality(id, { showOnHomepage: false });
+      showToast("Removed from homepage!", "success");
+      fetchLocalities();
+    } catch (err: any) {
+      showToast(err.message || "Failed to remove.", "error");
+    }
+  };
+
   const handleSave = async (id: string) => {
     setField(id, "saving", true);
     try {
       const image = state[id]?.image || "";
       await updateLocality(id, { image });
-      // Update local list
-      setLocalities((prev) =>
+      setAllLocalities((prev) =>
         prev.map((loc) => (loc._id === id ? { ...loc, image } : loc))
       );
       showToast("Image saved!", "success");
@@ -98,8 +147,7 @@ export default function LocalityContentPage() {
     "w-full px-3 py-2 bg-[#FAF1E6]/40 border border-[#C7C0AE]/40 rounded-xl text-sm text-[#313131] placeholder-[#313131]/30 focus:outline-none focus:border-[#FFA100] transition-colors";
 
   return (
-    <div className="max-w-5xl mx-auto space-y-6">
-      {/* Toast */}
+    <div className="max-w-5xl mx-auto space-y-8">
       {toast && (
         <div
           className={`fixed top-6 right-6 z-50 px-5 py-3 rounded-xl shadow-xl text-sm font-semibold text-white ${
@@ -110,21 +158,85 @@ export default function LocalityContentPage() {
         </div>
       )}
 
-      {/* Header */}
       <div>
         <h2 className="text-2xl font-extrabold text-[#313131] font-vietnam">
-          Locality Content
+          Homepage Localities
         </h2>
         <p className="text-sm text-[#313131]/50 mt-1">
-          Upload images for localities — they appear on the homepage.
+          Select which localities should appear on the homepage and manage their images.
         </p>
       </div>
+
+      {/* Add New Locality to Homepage */}
+      <div className="bg-white p-6 rounded-2xl border border-[#C7C0AE]/30 shadow-sm space-y-4">
+        <h3 className="font-bold text-[#313131] text-lg">Add Locality to Homepage</h3>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
+          <div className="space-y-1">
+            <label className="text-xs font-black text-[#313131]/70 uppercase tracking-wider">Select Locality</label>
+            <select
+              className={inputCls + " cursor-pointer"}
+              value={selectedLocalityId}
+              onChange={(e) => setSelectedLocalityId(e.target.value)}
+            >
+              <option value="">-- Choose Locality --</option>
+              {availableLocalities.map((loc) => (
+                <option key={loc._id} value={loc._id}>
+                  {loc.name} {loc.city ? `(${loc.city})` : ""}
+                </option>
+              ))}
+            </select>
+          </div>
+          
+          <div className="space-y-1">
+            <label className="text-xs font-black text-[#313131]/70 uppercase tracking-wider">Image URL (Optional)</label>
+            <div className="flex gap-2">
+              <input
+                className={inputCls}
+                value={newImage}
+                onChange={(e) => setNewImage(e.target.value)}
+                placeholder="Paste URL or upload ->"
+              />
+              <button
+                type="button"
+                onClick={() => newFileInputRef.current?.click()}
+                className="px-3 py-2 bg-[#FAF1E6] border border-[#C7C0AE]/40 rounded-xl hover:bg-[#FFA100] transition-colors"
+                title="Upload Image"
+              >
+                📸
+              </button>
+              <input
+                ref={newFileInputRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) handleNewFileUpload(file);
+                  e.target.value = "";
+                }}
+              />
+            </div>
+          </div>
+
+          <div>
+            <button
+              onClick={handleAddToHomepage}
+              disabled={isAdding || !selectedLocalityId}
+              className="w-full px-6 py-2.5 bg-[#313131] text-white font-bold rounded-xl hover:bg-[#FFA100] hover:text-[#313131] transition-colors disabled:opacity-50"
+            >
+              {isAdding ? "Adding..." : "+ Add to Homepage"}
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <hr className="border-[#C7C0AE]/30" />
 
       {/* Search */}
       <div className="bg-white p-4 rounded-2xl border border-[#C7C0AE]/30 shadow-sm">
         <input
           className={inputCls}
-          placeholder="Search locality by name or city…"
+          placeholder="Search homepage localities…"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
         />
@@ -136,7 +248,7 @@ export default function LocalityContentPage() {
         </div>
       ) : filtered.length === 0 ? (
         <div className="text-center py-20 text-[#313131]/40 font-medium">
-          No localities found.
+          No localities explicitly added to the homepage yet.
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -212,14 +324,22 @@ export default function LocalityContentPage() {
 
                 {/* Info + URL input */}
                 <div className="p-4 space-y-3">
-                  <div>
-                    <p className="font-bold text-[#313131]">{loc.name}</p>
-                    <p className="text-xs text-[#313131]/50">
-                      {[loc.city, loc.state].filter(Boolean).join(", ")}
-                      {loc.activeGroups
-                        ? ` · ${loc.activeGroups} active groups`
-                        : ""}
-                    </p>
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <p className="font-bold text-[#313131]">{loc.name}</p>
+                      <p className="text-xs text-[#313131]/50">
+                        {[loc.city, loc.state].filter(Boolean).join(", ")}
+                        {loc.activeGroups
+                          ? ` · ${loc.activeGroups} active groups`
+                          : ""}
+                      </p>
+                    </div>
+                    <button
+                      onClick={() => handleRemoveFromHomepage(loc._id)}
+                      className="text-[10px] text-red-500 hover:text-red-700 font-bold px-2 py-1 bg-red-50 hover:bg-red-100 rounded-md transition-colors"
+                    >
+                      Remove from Homepage
+                    </button>
                   </div>
 
                   <input
@@ -244,7 +364,7 @@ export default function LocalityContentPage() {
                       disabled={s.saving || s.uploading || !changed}
                       className="ml-auto px-4 py-1.5 bg-[#313131] text-white text-xs font-bold rounded-xl hover:bg-[#FFA100] hover:text-[#313131] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                     >
-                      {s.saving ? "Saving…" : "Save"}
+                      {s.saving ? "Saving…" : "Save Image"}
                     </button>
                   </div>
                 </div>

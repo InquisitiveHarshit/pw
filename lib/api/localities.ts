@@ -10,6 +10,7 @@ export type Locality = {
   activeGroups: number;
   image?: string;   // Cloudinary URL — set via Locality Content admin
   content?: Record<string, unknown>; // stub for future SEO/text fields
+  showOnHomepage?: boolean;
   createdAt: string;
 };
 
