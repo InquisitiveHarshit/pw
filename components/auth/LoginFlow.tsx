@@ -75,17 +75,28 @@ export default function LoginFlow({
     try {
       // DUMMY: any 4-digit OTP passes for now
       // Check if phone exists in DB
+      console.log("Checking phone number:", phone.trim());
       const res = await phoneCheck(phone.trim());
-      if (res.exists) {
+      console.log("phoneCheck response:", res);
+      
+      if (res && res.exists) {
         // Existing user → login directly
+        console.log("Existing user found, attempting login...");
         const loginRes = await phoneLogin(phone.trim());
-        storeAndClose(loginRes.data);
+        console.log("phoneLogin response:", loginRes);
+        if (loginRes.success && loginRes.data) {
+          storeAndClose(loginRes.data);
+        } else {
+          throw new Error("Login failed even though user exists.");
+        }
       } else {
         // New user → collect name
+        console.log("User not found, going to create profile step.");
         setIsNewUser(true);
         setStep("name");
       }
     } catch (err: any) {
+      console.error("OTP Verification Error:", err);
       setError(err?.message || "Verification failed. Please try again.");
     } finally {
       setLoading(false);
