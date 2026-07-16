@@ -354,16 +354,10 @@ export default function FastSellingProperties() {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-3 pt-2">
-                  <button
-                    onClick={(e) => { e.stopPropagation(); alert(`Direct Booking Solo at ${prop.developerPrice} unlocked!`); }}
-                    className="py-3 px-2 border-2 border-[#FFA100] bg-transparent text-[#FFA100] hover:bg-[#FFA100] hover:text-[#313131] font-bold text-xs rounded-xl transition-all duration-300 cursor-pointer text-center font-vietnam shadow-sm active:scale-98"
-                  >
-                    Book Solo
-                  </button>
+                <div className="pt-2">
                   <button
                     onClick={(e) => { e.stopPropagation(); alert(`Joining the active group buy for ${prop.projectName}! Discount will be locked.`); }}
-                    className="py-3 px-2 bg-[#FFA100] hover:bg-[#FFA100]/90 text-[#313131] font-bold text-xs rounded-xl transition-all duration-300 cursor-pointer text-center font-vietnam shadow-md active:scale-98"
+                    className="w-full py-3 px-2 bg-[#FFA100] hover:bg-[#FFA100]/90 text-[#313131] font-bold text-sm rounded-xl transition-all duration-300 cursor-pointer text-center font-vietnam shadow-md active:scale-98"
                   >
                     Group Purchase
                   </button>
