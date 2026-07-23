@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
+import Image from "next/image";
 
 export default function Footer() {
   const [email, setEmail] = useState("");
@@ -22,19 +23,14 @@ export default function Footer() {
           
           {/* Logo & Brand Column */}
           <div className="lg:col-span-2 space-y-6">
-            <div className="flex items-center gap-3">
-              <div className="flex items-center bg-[#FAF1E6] px-3 py-1.5 rounded-lg shadow-sm">
-                <span className="font-extrabold text-xl tracking-tighter text-[#313131] font-vietnam">P</span>
-                <span className="font-extrabold text-xl tracking-tighter text-[#FFA100] font-vietnam">W</span>
-              </div>
-              <div className="flex flex-col leading-none">
-                <span className="text-sm font-black tracking-wide text-[#FAF1E6] font-vietnam">
-                  PROPERTIES <span className="text-[#FFA100]">WALLAH</span>
-                </span>
-                <span className="text-[8px] font-bold tracking-[0.2em] text-[#C7C0AE] mt-0.5 uppercase">
-                  No Hype, Just Realty
-                </span>
-              </div>
+            <div className="flex items-center">
+              <Image 
+                src="/header1-logo.png" 
+                alt="Properties Wallah Logo" 
+                width={250} 
+                height={100} 
+                className="h-24 w-auto"
+              />
             </div>
             
             <p className="text-[#C7C0AE] text-sm max-w-sm leading-relaxed">
