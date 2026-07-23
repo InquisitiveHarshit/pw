@@ -3,6 +3,7 @@
 import React, { useState } from "react";
 import Image from "next/image";
 
+
 export default function Footer() {
   const [email, setEmail] = useState("");
   const [subscribed, setSubscribed] = useState(false);
@@ -20,23 +21,23 @@ export default function Footer() {
     <footer className="bg-[#313131] text-white border-t border-[#C7C0AE]/20">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-12">
-          
+
           {/* Logo & Brand Column */}
           <div className="lg:col-span-2 space-y-6">
             <div className="flex items-center">
-              <Image 
-                src="/header1-logo.png" 
-                alt="Properties Wallah Logo" 
-                width={250} 
-                height={100} 
+              <Image
+                src="/header1-logo.png"
+                alt="Properties Wallah Logo"
+                width={250}
+                height={100}
                 className="h-24 w-auto"
               />
             </div>
-            
+
             <p className="text-[#C7C0AE] text-sm max-w-sm leading-relaxed">
               India&apos;s pioneering group-buying platform for residential and commercial real estate. Buy together, unlock developer bulk discounts, and keep 100% of the savings.
             </p>
-            
+
             {/* Social Icons */}
             <div className="flex space-x-4">
               {["twitter", "facebook", "instagram", "linkedin"].map((platform) => (
